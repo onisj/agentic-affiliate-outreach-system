@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ subject }}</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="20" style="border: 1px solid #ddd;">
+                    <tr>
+                        <td>
+                            <h2>Hello {{ first_name | default('there') }},</h2>
+                            <p>{{ company_mention }} and we're impressed by your work in the industry.</p>
+                            <p>We have an exciting affiliate program that could be a great fit for you:</p>
+                            <ul>
+                                <li>Competitive commission rates</li>
+                                <li>Marketing materials provided</li>
+                                <li>Dedicated support team</li>
+                            </ul>
+                            <p>Would you be interested in learning more? <a href="https://yourcompany.com/affiliates">Join now</a> or reply to this email.</p>
+                            <p>Best regards,<br>Your Company Team</p>
+                            <hr>
+                            <p style="font-size: 12px; color: #777;">
+                                You received this email because you opted in to our affiliate program.
+                                <a href="https://yourcompany.com/unsubscribe?email={{ email }}">Unsubscribe</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
