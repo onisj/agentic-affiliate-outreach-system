@@ -1,6 +1,0 @@
-email,first_name,last_name,company,website,lead_source,consent_given
-john.doe@acme.com,John,Doe,Acme Corp,https://acme.com,LinkedIn,true
-jane.smith@techstart.io,Jane,Smith,TechStart,https://techstart.io,referral,true
-bob.wilson@marketing.pro,Bob,Wilson,Marketing Pro,https://marketing.pro,website,true
-alice.brown@creative.agency,Alice,Brown,Creative Agency,https://creative.agency,cold_outreach,false
-mike.davis@ecom.store,Mike,Davis,Ecom Store,https://ecom.store,LinkedIn,true
