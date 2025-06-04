@@ -2,9 +2,9 @@ from typing import List, Dict, Any
 import requests
 from sqlalchemy.orm import Session
 from database.models import AffiliateProspect, ProspectStatus
-from config import settings
+from config.settings import settings
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class LeadDiscoveryService:
     def __init__(self):
@@ -69,7 +69,7 @@ class LeadDiscoveryService:
                             lead_source=prospect_data['lead_source'],
                             consent_given=prospect_data['consent_given'],
                             status=ProspectStatus.NEW,
-                            created_at=datetime.utcnow()
+                            created_at=datetime.now(timezone.utc)
                         )
                         db.add(db_prospect)
                         prospects.append(prospect_data)
@@ -135,7 +135,7 @@ class LeadDiscoveryService:
                         lead_source=prospect_data['lead_source'],
                         consent_given=prospect_data['consent_given'],
                         status=ProspectStatus.NEW,
-                        created_at=datetime.utcnow()
+                        created_at=datetime.now(timezone.utc)
                     )
                     db.add(db_prospect)
                     prospects.append(prospect_data)

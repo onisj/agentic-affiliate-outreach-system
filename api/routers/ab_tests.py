@@ -4,7 +4,7 @@ from database.session import get_db
 from database.models import ABTest, OutreachCampaign
 from typing import List, Dict, Any
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/ab-tests", tags=["ab-tests"])
 
@@ -19,7 +19,7 @@ def create_ab_test(campaign_id: str, name: str, variants: List[Dict[str, Any]], 
         campaign_id=campaign_id,
         name=name,
         variants=variants,  # e.g., [{"variant_id": "A", "template_id": "uuid"}, {"variant_id": "B", "template_id": "uuid"}]
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     
     db.add(ab_test)

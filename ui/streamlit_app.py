@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from sqlalchemy import create_engine, text
-from config import settings
+from config.settings import settings
 import logging
 from io import BytesIO
 from reportlab.lib.pagesizes import letter

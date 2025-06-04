@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db, AffiliateProspect, MessageTemplate
+from database.session import get_db
+from database.models import AffiliateProspect, MessageTemplate
 from services.social_service import SocialService
 from typing import Dict, Any
 

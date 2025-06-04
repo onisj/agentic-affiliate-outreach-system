@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database.models import Sequence, MessageLog, AffiliateProspect, MessageTemplate, MessageType, MessageStatus, ABTest, ABTestResult
 from database.session import get_db
 from services.email_service import EmailService
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import logging
 import random
@@ -50,7 +50,7 @@ def process_sequence_step(prospect_id: str, campaign_id: str):
         # Check delay
         if last_message:
             delay = timedelta(days=next_step.delay_days)
-            if datetime.utcnow() < last_message.sent_at + delay:
+            if datetime.now(timezone.utc) < last_message.sent_at + delay:
                 logger.info(f"Delay not met for prospect {prospect_id}")
                 return {"success": True, "message": "Delay not met"}
         
@@ -79,7 +79,7 @@ def process_sequence_step(prospect_id: str, campaign_id: str):
                     open_rate=0.0,
                     click_rate=0.0,
                     reply_rate=0.0,
-                    updated_at=datetime.utcnow()
+                    updated_at=datetime.now(timezone.utc)
                 )
                 db.add(result)
             result.sent_count += 1
@@ -118,7 +118,7 @@ def process_sequence_step(prospect_id: str, campaign_id: str):
             message_type=MessageType.EMAIL,
             subject=personalized_subject,
             content=personalized_content,
-            sent_at=datetime.utcnow(),
+            sent_at=datetime.now(timezone.utc),
             status=MessageStatus.SENT if success else MessageStatus.BOUNCED,
             step_number=next_step.step_number,
             ab_test_variant=variant_id
@@ -179,7 +179,7 @@ def update_ab_test_metrics(ab_test_id: str, variant_id: str):
         result.open_rate = (opened / sent * 100) if sent > 0 else 0.0
         result.click_rate = (clicked / sent * 100) if sent > 0 else 0.0
         result.reply_rate = (replied / sent * 100) if sent > 0 else 0.0
-        result.updated_at = datetime.utcnow()
+        result.updated_at = datetime.now(timezone.utc)
         
         db.commit()
     except Exception as e:

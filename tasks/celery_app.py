@@ -1,5 +1,5 @@
 from celery import Celery
-from config import settings
+from config.settings import settings
 
 celery_app = Celery(
     "affiliate_system",

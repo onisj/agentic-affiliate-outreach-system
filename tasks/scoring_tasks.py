@@ -1,4 +1,4 @@
-from celery_app import celery_app
+from tasks.celery_app import celery_app
 from sqlalchemy.orm import Session
 from database.models import AffiliateProspect
 from database.session import get_db

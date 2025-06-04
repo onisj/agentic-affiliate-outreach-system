@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   api:
@@ -12,6 +12,10 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
+      - TWITTER_CONSUMER_KEY=${TWITTER_CONSUMER_KEY}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET}
+      - LINKEDIN_REDIRECT_URL=${LINKEDIN_REDIRECT_URL}
       - LINKEDIN_ACCESS_TOKEN=${LINKEDIN_ACCESS_TOKEN}
       - POSITIVE_RESPONSE_TEMPLATE_ID=${POSITIVE_RESPONSE_TEMPLATE_ID}
       - NEUTRAL_RESPONSE_TEMPLATE_ID=${NEUTRAL_RESPONSE_TEMPLATE_ID}
@@ -21,6 +25,8 @@ services:
       - redis
     volumes:
       - .:/app
+    networks:
+      - affiliate_network
 
   db:
     image: postgres:16
@@ -29,14 +35,18 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - affiliate_network
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    networks:
+      - affiliate_network
 
   celery:
     build: .
@@ -50,6 +60,8 @@ services:
       - db
     volumes:
       - .:/app
+    networks:
+      - affiliate_network
 
   gradio:
     build: .
@@ -63,6 +75,8 @@ services:
       - api
     volumes:
       - .:/app
+    networks:
+      - affiliate_network
 
   streamlit:
     build: .
@@ -76,13 +90,19 @@ services:
       - api
     volumes:
       - .:/app
+    networks:
+      - affiliate_network
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v2.54.1
+    container_name: affiliate_prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     ports:
       - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - affiliate_network
 
   grafana:
     image: grafana/grafana
@@ -90,6 +110,13 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    networks:
+      - affiliate_network
 
 volumes:
   postgres_data:
+  prometheus_data:
+
+networks:
+  affiliate_network:
+    driver: bridge

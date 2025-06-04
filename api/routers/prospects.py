@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from database import get_db, AffiliateProspect, ProspectStatus
-from api.schemas import ProspectCreate, ProspectResponse
-from tasks import score_prospect
+from database.session import get_db 
+from database.models import AffiliateProspect, ProspectStatus
+from api.schemas.prospect import ProspectCreate, ProspectResponse
+from tasks.scoring_tasks import score_prospect
 import uuid
 from uuid import UUID
 from datetime import datetime
@@ -134,3 +135,17 @@ def bulk_update_prospects(
     db.commit()
     
     return {"message": f"Updated {updated_count} prospects"}
+
+@router.delete("/{prospect_id}/unsubscribe")
+async def unsubscribe_prospect(prospect_id: str, db: Session = Depends(get_db)):
+    try:
+        prospect = db.query(AffiliateProspect).filter(AffiliateProspect.id == UUID(prospect_id)).first()
+        if not prospect:
+            raise HTTPException(status_code=404, detail="Prospect not found")
+        prospect.consent_given = False
+        prospect.consent_timestamp = None
+        prospect.status = ProspectStatus.DECLINED
+        db.commit()
+        return {"message": "Prospect unsubscribed successfully"}
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid prospect ID format")

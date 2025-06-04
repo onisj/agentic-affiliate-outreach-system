@@ -3,7 +3,7 @@ from typing import Dict, Any
 from urllib.parse import urlparse
 import dns.resolver
 import requests
-from config import settings
+from config.settings import settings
 
 class DataValidator:
     """Utility class for validating prospect data."""

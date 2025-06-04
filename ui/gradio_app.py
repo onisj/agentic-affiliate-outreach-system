@@ -1,7 +1,7 @@
 import gradio as gr
 import requests
 from typing import Dict, Any
-from config import settings
+from config.settings import settings
 import logging
 import json
 from uuid import uuid4
@@ -9,7 +9,7 @@ from uuid import uuid4
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = "http://api:8000"
+API_BASE_URL = "http://localhost:8000"
 
 def get_prospects() -> Dict[str, Any]:
     try:

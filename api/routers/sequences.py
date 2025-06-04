@@ -4,7 +4,7 @@ from database.session import get_db
 from database.models import Sequence, OutreachCampaign, MessageTemplate
 from api.schemas.sequence import SequenceCreate, SequenceResponse
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/sequences", tags=["sequences"])
 
@@ -35,7 +35,7 @@ def create_sequence(sequence: SequenceCreate, db: Session = Depends(get_db)):
         template_id=sequence.template_id,
         delay_days=sequence.delay_days,
         condition=sequence.condition,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(db_sequence)
     db.commit()

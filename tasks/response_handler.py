@@ -1,14 +1,16 @@
-from celery_app import celery_app
+from tasks.celery_app import celery_app
 from sqlalchemy.orm import Session
 from database.models import MessageLog, AffiliateProspect, MessageTemplate, MessageType, MessageStatus
-from database.session import SessionLocal
+# from database.session import SessionLocal
+from database.session import get_db
 from services.email_service import EmailService
 from typing import Dict, Any
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from textblob import TextBlob
-from config import settings
+from config.settings import settings
 import logging
+from database.models import ProspectStatus
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +18,8 @@ logger = logging.getLogger(__name__)
 @celery_app.task
 def handle_prospect_response(message_log_id: str, response_text: str) -> Dict[str, Any]:
     """Process a prospect's response and trigger follow-up if needed."""
-    db: Session = SessionLocal()
+    # db: Session = SessionLocal()
+    db: Session = next(get_db())
     email_service = EmailService()
     
     try:
@@ -37,7 +40,7 @@ def handle_prospect_response(message_log_id: str, response_text: str) -> Dict[st
         sentiment = analysis.sentiment.polarity
         
         # Update message log
-        message_log.replied_at = datetime.utcnow()
+        message_log.replied_at = datetime.now(timezone.utc)
         message_log.status = MessageStatus.REPLIED
         db.commit()
         
@@ -94,7 +97,7 @@ def handle_prospect_response(message_log_id: str, response_text: str) -> Dict[st
                 message_type=MessageType.EMAIL,
                 subject=personalized_subject,
                 content=personalized_content,
-                sent_at=datetime.utcnow(),
+                sent_at=datetime.now(timezone.utc),
                 status=MessageStatus.SENT if success else MessageStatus.BOUNCED
             )
             
