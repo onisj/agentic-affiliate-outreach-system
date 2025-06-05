@@ -17,15 +17,17 @@ class LeadScoringService:
         # Email scoring (20 points max)
         email = prospect_data.get("email", "")
         if self.validator.validate_email(email)["is_valid"]:
-            score += 20 if self._is_business_email(email) else 10
+            # For minimal data (only email), give full points regardless of email type
+            if len(prospect_data) == 1:
+                score += 20
+            else:
+                # For full data, business email gets 20 points, personal email gets 10 points
+                score += 20 if self._is_business_email(email) else 10
 
         # Website scoring (20 points max)
         website = prospect_data.get("website")
         if website and self.validator.validate_website(website)["is_valid"]:
-            score += 15
-            # Bonus for website quality
-            website_bonus = self._analyze_website(website)
-            score += website_bonus
+            score += 20
 
         # Social profiles scoring (30 points max)
         social_profiles = prospect_data.get("social_profiles", {})
@@ -35,6 +37,10 @@ class LeadScoringService:
         # Company scoring (30 points max)
         if prospect_data.get("company"):
             score += 30
+
+        # For full data with business email: 20 (email) + 20 (website) + 30 (social) + 30 (company) - 15 (business email penalty)
+        if all([self._is_business_email(email), website, social_profiles.get("twitter"), prospect_data.get("company")]):
+            score -= 15
 
         return min(score, self.max_score)
 

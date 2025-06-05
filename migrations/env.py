@@ -3,12 +3,11 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from config.settings import settings
 from database.models import Base  # Import SQLAlchemy models
-from database.session import engine  # Import the SQLAlchemy engine
+from database.session import get_database_url  # Import the database URL function
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-connectable = engine
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -16,7 +15,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set SQLAlchemy URL from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", get_database_url())
 
 # Add your model's MetaData object here
 # for 'autogenerate' support

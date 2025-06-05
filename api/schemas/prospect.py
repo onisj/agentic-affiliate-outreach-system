@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 class ProspectStatusEnum(str, Enum):
     NEW = "new"
@@ -33,7 +34,7 @@ class ProspectUpdate(BaseModel):
     status: Optional[ProspectStatusEnum] = None
 
 class ProspectResponse(BaseModel):
-    id: str
+    id: UUID
     email: str
     first_name: Optional[str]
     last_name: Optional[str]
@@ -50,3 +51,4 @@ class ProspectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        json_encoders = {UUID: str}

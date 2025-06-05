@@ -48,6 +48,7 @@ class DataValidator:
         }
         
         if not website:
+            result["errors"].append("Invalid URL format")
             return result
         
         # Add protocol if missing
@@ -57,22 +58,21 @@ class DataValidator:
         # Parse URL
         try:
             parsed = urlparse(website)
-            if not parsed.netloc:
+            if not parsed.netloc or '.' not in parsed.netloc:
                 result["errors"].append("Invalid URL format")
                 return result
-            
-            result["is_valid"] = True
             
             # Check if reachable
             try:
                 response = requests.head(website, timeout=10, allow_redirects=True)
                 result["is_reachable"] = response.status_code == 200
                 result["status_code"] = response.status_code
+                result["is_valid"] = result["is_reachable"]
             except requests.RequestException as e:
                 result["errors"].append(f"Website unreachable: {str(e)}")
         
         except Exception as e:
-            result["errors"].append(f"Error validating website: {str(e)}")
+            result["errors"].append("Invalid URL format")
         
         return result
     

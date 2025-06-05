@@ -1,7 +1,7 @@
 import os
 import pytest
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from database.base import Base
 from fastapi.testclient import TestClient
@@ -24,21 +24,19 @@ def setup_env():
 
 @pytest.fixture
 def db_session():
-    db_url = os.getenv("TEST_DB_URL", "postgresql+psycopg2://root:root@localhost:5432/affiliate_db")
+    # Use TEST_DB_URL for Docker/containerized environments, fallback to DB_URL for local testing
+    db_url = os.getenv("TEST_DB_URL", os.getenv("DB_URL", "postgresql+psycopg2://root:root@localhost:5432/affiliate_db"))
     engine = create_engine(db_url, echo=False)
-    
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    
     Session = sessionmaker(bind=engine)
-    session = Session()
-    
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
     try:
         yield session
     finally:
-        session.rollback()
         session.close()
-        Base.metadata.drop_all(engine)
+        transaction.rollback()
+        connection.close()
         engine.dispose()
 
 @pytest.fixture
@@ -72,3 +70,12 @@ def setup_celery():
     yield
     celery_app.conf.task_always_eager = False
     logger.debug("Reset Celery task_always_eager to False")
+
+@pytest.fixture(autouse=True)
+def clean_tables(db_session):
+    """Truncate campaigns, prospects, and content tables before each test function."""
+    db_session.execute(text('TRUNCATE TABLE outreach_campaigns RESTART IDENTITY CASCADE;'))
+    db_session.execute(text('TRUNCATE TABLE affiliate_prospects RESTART IDENTITY CASCADE;'))
+    db_session.execute(text('TRUNCATE TABLE content RESTART IDENTITY CASCADE;'))
+    db_session.commit()
+    yield

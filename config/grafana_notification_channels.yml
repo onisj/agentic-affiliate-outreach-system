@@ -1,0 +1,29 @@
+apiVersion: 1
+
+notifiers:
+  - name: email-notifications
+    type: email
+    uid: email1
+    org_id: 1
+    is_default: true
+    settings:
+      addresses: ${GRAFANA_ALERT_EMAIL}
+      singleEmail: true
+
+  - name: slack-notifications
+    type: slack
+    uid: slack1
+    org_id: 1
+    is_default: false
+    settings:
+      url: ${GRAFANA_SLACK_WEBHOOK_URL}
+      recipient: "#affiliate-outreach-alerts"
+      mentionChannel: "here"
+      token: ${GRAFANA_SLACK_TOKEN}
+      username: "Affiliate Outreach Alerts"
+      iconEmoji: ":warning:"
+      iconUrl: ""
+      mentionUsers: ""
+      mentionGroups: ""
+      useDiscord: false
+      useMention: true 

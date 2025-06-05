@@ -3,13 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 import uuid
+from datetime import datetime, timezone
 from database.models import MessageTemplate, MessageType
 from api.schemas.template import TemplateCreate, TemplateResponse
 from database.session import get_db
 
-router = APIRouter(prefix="/templates", tags=["templates"])
+router = APIRouter(tags=["templates"])
 
-@router.post("/", response_model=TemplateResponse)
+@router.post("/", response_model=TemplateResponse, status_code=201)
 def create_template(template: TemplateCreate, db: Session = Depends(get_db)):
     """Create a new message template."""
     try:
@@ -17,13 +18,16 @@ def create_template(template: TemplateCreate, db: Session = Depends(get_db)):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid message type. Must be 'email', 'linkedin', or 'twitter'")
 
+    now = datetime.now(timezone.utc)
     db_template = MessageTemplate(
         id=UUID(str(uuid.uuid4())),
         name=template.name,
         subject=template.subject,
         content=template.content,
         message_type=message_type,
-        is_active=True
+        is_active=True,
+        created_at=now,
+        updated_at=now
     )
 
     db.add(db_template)
@@ -61,6 +65,8 @@ def update_template(template_id: UUID, template_update: TemplateCreate, db: Sess
     template.subject = template_update.subject
     template.content = template_update.content
     template.message_type = message_type
+    template.updated_at = datetime.now(timezone.utc)
+    
     db.commit()
     db.refresh(template)
     return template
@@ -73,5 +79,6 @@ def delete_template(template_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Template not found")
 
     template.is_active = False
+    template.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Template deactivated successfully"}

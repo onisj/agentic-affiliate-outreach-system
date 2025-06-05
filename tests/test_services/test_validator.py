@@ -25,8 +25,10 @@ def test_validate_website_invalid():
 
 def test_validate_social_profile_twitter_success():
     validator = DataValidator()
-    result = validator.validate_social_profile("twitter", {"username": "testuser"})
-    assert result["is_valid"] is True
+    with patch("requests.get") as mock_get:
+        mock_get.return_value.status_code = 200
+        result = validator.validate_social_profile("twitter", {"username": "testuser"})
+        assert result["is_valid"] is True
 
 def test_validate_social_profile_unsupported_platform():
     validator = DataValidator()

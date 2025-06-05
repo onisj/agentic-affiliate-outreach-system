@@ -1,3 +1,4 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -8,11 +9,17 @@ from tasks.sequence_tasks import process_sequence_step
 from uuid import UUID
 import logging
 from typing import List
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+from pydantic import ValidationError
+from fastapi.exception_handlers import RequestValidationError
+from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi import FastAPI
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/campaigns", tags=["campaigns"])
+router = APIRouter(tags=["campaigns"])
 
 def serialize_campaign_response(campaign) -> dict:
     """Helper function to properly serialize campaign data"""
@@ -32,19 +39,9 @@ async def create_campaign(campaign: CampaignCreate, db: Session = Depends(get_db
     logger.debug("Starting create_campaign with data: %s", campaign.model_dump())
     
     try:
-        # Validate template_id format
-        try:
-            template_uuid = UUID(campaign.template_id)
-        except ValueError:
-            logger.error("Invalid UUID format for template_id: %s", campaign.template_id)
-            raise HTTPException(
-                status_code=400, 
-                detail="Invalid template_id format. Must be a valid UUID."
-            )
-        
         # Check if template exists and is active
         template = db.query(MessageTemplate).filter(
-            MessageTemplate.id == template_uuid,
+            MessageTemplate.id == campaign.template_id,
             MessageTemplate.is_active == True
         ).first()
         
@@ -58,7 +55,7 @@ async def create_campaign(campaign: CampaignCreate, db: Session = Depends(get_db
         # Create campaign
         db_campaign = OutreachCampaign(
             name=campaign.name.strip(),
-            template_id=template_uuid,
+            template_id=campaign.template_id,
             target_criteria=campaign.target_criteria or {},
             status=CampaignStatus.DRAFT
         )
@@ -87,7 +84,11 @@ async def create_campaign(campaign: CampaignCreate, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/")
-async def get_campaigns(db: Session = Depends(get_db), skip: int = 0, limit: int = 100):
+async def get_campaigns(
+    db: Session = Depends(get_db), 
+    skip: int = Query(0, ge=0), 
+    limit: int = Query(100, ge=0)
+):
     """Get campaigns with proper serialization"""
     logger.debug("Fetching campaigns with skip=%d, limit=%d", skip, limit)
     
@@ -105,28 +106,21 @@ async def get_campaigns(db: Session = Depends(get_db), skip: int = 0, limit: int
 
 @router.get("/{campaign_id}")
 async def get_campaign(campaign_id: str, db: Session = Depends(get_db)):
-    """Get a specific campaign with proper serialization"""
     logger.debug("Fetching campaign with id=%s", campaign_id)
-    
     try:
-        # Validate UUID format
         try:
             campaign_uuid = UUID(campaign_id)
         except ValueError:
             logger.error("Invalid UUID format: %s", campaign_id)
             raise HTTPException(status_code=400, detail="Invalid campaign_id format")
-        
         campaign = db.query(OutreachCampaign).filter(
             OutreachCampaign.id == campaign_uuid
         ).first()
-        
         if not campaign:
             logger.error("Campaign not found: %s", campaign_id)
             raise HTTPException(status_code=404, detail="Campaign not found")
-        
         logger.debug("Found campaign: %s", campaign.id)
         return serialize_campaign_response(campaign)
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -135,160 +129,130 @@ async def get_campaign(campaign_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{campaign_id}/start")
 async def start_campaign(campaign_id: str, db: Session = Depends(get_db)):
-    """Start a campaign with comprehensive validation"""
     logger.debug("Starting campaign with id=%s", campaign_id)
-    
     try:
-        # Validate UUID format
         try:
             campaign_uuid = UUID(campaign_id)
         except ValueError:
             logger.error("Invalid UUID format: %s", campaign_id)
             raise HTTPException(status_code=400, detail="Invalid campaign_id format")
-        
-        # Get campaign with template
         campaign = db.query(OutreachCampaign).filter(
             OutreachCampaign.id == campaign_uuid
         ).first()
-        
         if not campaign:
             logger.error("Campaign not found: %s", campaign_id)
             raise HTTPException(status_code=404, detail="Campaign not found")
-        
-        # Check campaign status
         if campaign.status != CampaignStatus.DRAFT:
             logger.error("Campaign not in draft status: %s", campaign.status)
             raise HTTPException(
-                status_code=400, 
-                detail=f"Campaign is in {campaign.status.value} status, only DRAFT campaigns can be started"
+                status_code=400,
+                detail=f"Campaign is in {campaign.status.name.upper()} status, only DRAFT campaigns can be started"
             )
-        
-        # Verify template exists and is active
         template = db.query(MessageTemplate).filter(
             MessageTemplate.id == campaign.template_id,
             MessageTemplate.is_active == True
         ).first()
-        
         if not template:
             logger.error("Template not found or inactive for campaign: %s", campaign_id)
             raise HTTPException(
-                status_code=404, 
+                status_code=404,
                 detail="Template not found or is inactive"
             )
-        
-        # Get qualified prospects
         query = db.query(AffiliateProspect).filter(
             AffiliateProspect.consent_given == True
         )
-        
-        # Apply target criteria filtering
         if campaign.target_criteria:
             if min_score := campaign.target_criteria.get("min_score"):
                 query = query.filter(AffiliateProspect.qualification_score >= min_score)
-            
-            # Add other criteria filters as needed
             if industry := campaign.target_criteria.get("industry"):
-                # Assuming you have an industry field or it's in a JSON field
-                pass  # Implement industry filtering if needed
-        
+                pass
         prospects = query.all()
         logger.debug("Found %d qualified prospects", len(prospects))
-        
         if not prospects:
             logger.error("No qualified prospects found for campaign: %s", campaign_id)
             raise HTTPException(
-                status_code=400, 
-                detail="No qualified prospects found matching campaign criteria"
+                status_code=400,
+                detail="No qualified prospects found for this campaign"
             )
-        
-        # Update campaign status
         campaign.status = CampaignStatus.ACTIVE
-        
+        db.commit()
         try:
-            db.commit()
-            db.refresh(campaign)
-        except IntegrityError as e:
-            db.rollback()
-            logger.error("Database error updating campaign status: %s", e)
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to update campaign status"
-            )
-        
-        logger.info("Updated campaign status to ACTIVE: %s", campaign_id)
-        
-        # Start sequence for each qualified prospect
-        for prospect in prospects:
-            logger.debug("Triggering sequence step for prospect: %s", prospect.id)
-            try:
-                process_sequence_step.delay(str(prospect.id), str(campaign_id))
-            except Exception as e:
-                logger.warning("Failed to queue sequence task for prospect %s: %s", prospect.id, e)
-                # Continue with other prospects even if one fails
-        
+            for prospect in prospects:
+                process_sequence_step.delay(str(prospect.id), str(campaign.id))
+        except Exception as e:
+            logger.error("Error queueing sequence tasks: %s", e)
         return serialize_campaign_response(campaign)
-        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Unexpected error starting campaign: %s", e)
+        logger.error("Error starting campaign: %s", e)
         db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/{campaign_id}/pause")
 async def pause_campaign(campaign_id: str, db: Session = Depends(get_db)):
-    """Pause an active campaign"""
     logger.debug("Pausing campaign with id=%s", campaign_id)
-    
     try:
-        campaign_uuid = UUID(campaign_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid campaign_id format")
-    
-    campaign = db.query(OutreachCampaign).filter(
-        OutreachCampaign.id == campaign_uuid
-    ).first()
-    
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
-    if campaign.status != CampaignStatus.ACTIVE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Only ACTIVE campaigns can be paused, current status: {campaign.status.value}"
-        )
-    
-    campaign.status = CampaignStatus.PAUSED
-    db.commit()
-    db.refresh(campaign)
-    
-    return serialize_campaign_response(campaign)
+        try:
+            campaign_uuid = UUID(campaign_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid campaign_id format")
+        campaign = db.query(OutreachCampaign).filter(
+            OutreachCampaign.id == campaign_uuid
+        ).first()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if campaign.status != CampaignStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only ACTIVE campaigns can be paused, current status: {campaign.status.value}"
+            )
+        campaign.status = CampaignStatus.PAUSED
+        db.commit()
+        db.refresh(campaign)
+        return serialize_campaign_response(campaign)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error pausing campaign: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/{campaign_id}/resume")
 async def resume_campaign(campaign_id: str, db: Session = Depends(get_db)):
-    """Resume a paused campaign"""
     logger.debug("Resuming campaign with id=%s", campaign_id)
-    
     try:
-        campaign_uuid = UUID(campaign_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid campaign_id format")
-    
-    campaign = db.query(OutreachCampaign).filter(
-        OutreachCampaign.id == campaign_uuid
-    ).first()
-    
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
-    if campaign.status != CampaignStatus.PAUSED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Only PAUSED campaigns can be resumed, current status: {campaign.status.value}"
+        try:
+            campaign_uuid = UUID(campaign_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid campaign_id format")
+        campaign = db.query(OutreachCampaign).filter(
+            OutreachCampaign.id == campaign_uuid
+        ).first()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if campaign.status != CampaignStatus.PAUSED:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only PAUSED campaigns can be resumed, current status: {campaign.status.value}"
+            )
+        campaign.status = CampaignStatus.ACTIVE
+        db.commit()
+        db.refresh(campaign)
+        return serialize_campaign_response(campaign)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error resuming campaign: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+def add_exception_handlers(app: FastAPI):
+    @app.exception_handler(FastAPIHTTPException)
+    async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=fastapi_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": exc.errors(), "body": exc.body},
         )
-    
-    campaign.status = CampaignStatus.ACTIVE
-    db.commit()
-    db.refresh(campaign)
-    
-    return serialize_campaign_response(campaign)

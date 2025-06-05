@@ -16,7 +16,7 @@ def test_create_template_success(client: TestClient, reset_db):
         reset_db.query = mock_query
         mock_query.return_value.filter.return_value.first.return_value = None  # No existing template
         response = client.post("/templates/", json=template_data)
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert response.json()["name"] == template_data["name"]
 
 def test_get_templates(client: TestClient, reset_db):
@@ -24,8 +24,24 @@ def test_get_templates(client: TestClient, reset_db):
         mock_query = MagicMock()
         reset_db.query = mock_query
         mock_query.return_value.filter.return_value.offset.return_value.limit.return_value.all.return_value = [
-            MessageTemplate(id=str(uuid4()), name="Template 1", content="Content 1", message_type=MessageType.EMAIL, created_at=datetime.now(timezone.utc)),
-            MessageTemplate(id=str(uuid4()), name="Template 2", content="Content 2", message_type=MessageType.LINKEDIN, created_at=datetime.now(timezone.utc))
+            MessageTemplate(
+                id=str(uuid4()),
+                name="Template 1",
+                content="Content 1",
+                message_type=MessageType.EMAIL,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+                is_active=True
+            ),
+            MessageTemplate(
+                id=str(uuid4()),
+                name="Template 2",
+                content="Content 2",
+                message_type=MessageType.LINKEDIN,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+                is_active=True
+            )
         ]
         response = client.get("/templates/")
         assert response.status_code == 200
@@ -36,9 +52,17 @@ def test_update_template_success(client: TestClient, reset_db):
         template_id = str(uuid4())
         mock_query = MagicMock()
         reset_db.query = mock_query
-        mock_query.return_value.filter.return_value.first.return_value = MessageTemplate(
-            id=template_id, name="Old Name", content="Old Content", message_type=MessageType.EMAIL, created_at=datetime.now(timezone.utc)
+        template = MessageTemplate(
+            id=template_id,
+            name="Old Name",
+            content="Old Content",
+            message_type=MessageType.EMAIL,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            is_active=True
         )
+        reset_db.add(template)
+        mock_query.return_value.filter.return_value.first.return_value = template
         update_data = {
             "name": "Updated Name",
             "subject": "Updated Subject",

@@ -5,10 +5,11 @@ from enum import Enum
 from datetime import datetime
 
 class CampaignStatus(str, Enum):
-    DRAFT = "DRAFT"
-    ACTIVE = "ACTIVE"
-    PAUSED = "PAUSED"
-    COMPLETED = "COMPLETED"
+    DRAFT = "draft"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 class CampaignCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)

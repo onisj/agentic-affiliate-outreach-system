@@ -1,0 +1,62 @@
+groups:
+  - name: affiliate_outreach_alerts
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: rate(error_count_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 0.1 errors per second for 5 minutes"
+
+      # Message send failure alert
+      - alert: MessageSendFailures
+        expr: rate(message_send_attempts_total{status="failed"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High message send failure rate"
+          description: "Message send failure rate is above 5% for 5 minutes"
+
+      # API latency alert
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile of API request duration is above 2 seconds"
+
+      # Rate limit alert
+      - alert: RateLimitHits
+        expr: rate(rate_limit_hits_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limit hits detected"
+          description: "System is hitting rate limits on one or more platforms"
+
+      # Low prospect processing rate
+      - alert: LowProspectProcessingRate
+        expr: rate(prospect_processing_seconds_count[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low prospect processing rate"
+          description: "Prospect processing rate is below 0.1 per second for 10 minutes"
+
+      # High social API call rate
+      - alert: HighSocialAPICallRate
+        expr: rate(social_api_calls_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High social API call rate"
+          description: "Social API call rate is above 10 calls per second for 5 minutes" 

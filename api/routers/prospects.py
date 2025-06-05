@@ -7,11 +7,11 @@ from api.schemas.prospect import ProspectCreate, ProspectResponse
 from tasks.scoring_tasks import score_prospect
 import uuid
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 
-router = APIRouter(prefix="/prospects", tags=["prospects"])
+router = APIRouter(tags=["prospects"])
 
-@router.post("/", response_model=ProspectResponse)
+@router.post("/", response_model=ProspectResponse, status_code=201)
 def create_prospect(prospect: ProspectCreate, db: Session = Depends(get_db)):
     """Create a new affiliate prospect"""
     existing = db.query(AffiliateProspect).filter(
@@ -34,7 +34,7 @@ def create_prospect(prospect: ProspectCreate, db: Session = Depends(get_db)):
         social_profiles=prospect.social_profiles,
         lead_source=prospect.lead_source,
         consent_given=prospect.consent_given,
-        consent_timestamp=datetime.utcnow() if prospect.consent_given else None,
+        consent_timestamp=datetime.now(timezone.utc) if prospect.consent_given else None,
         status=ProspectStatus.NEW
     )
     
@@ -95,7 +95,7 @@ def update_consent(prospect_id: str, consent_given: bool, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Prospect not found")
     
     prospect.consent_given = consent_given
-    prospect.consent_timestamp = datetime.utcnow() if consent_given else None
+    prospect.consent_timestamp = datetime.now(timezone.utc) if consent_given else None
     db.commit()
     db.refresh(prospect)
     
@@ -129,7 +129,7 @@ def bulk_update_prospects(
                 continue
         if consent_given is not None:
             prospect.consent_given = consent_given
-            prospect.consent_timestamp = datetime.utcnow() if consent_given else None
+            prospect.consent_timestamp = datetime.now(timezone.utc) if consent_given else None
             updated_count += 1
     
     db.commit()

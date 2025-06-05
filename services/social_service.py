@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 import tweepy
 from database.models import MessageLog, MessageType, MessageStatus
 from config.settings import settings
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -128,9 +129,7 @@ class SocialService:
         campaign_id: Optional[str] = None,
         db: Optional[Session] = None,
     ) -> Dict[str, Any]:
-        """Placeholder for sending a LinkedIn message to a prospect.
-
-        Note: This is a mock implementation pending OAuth 2.0 setup for LinkedIn API.
+        """Send a LinkedIn message to a prospect using the LinkedIn Messaging API.
 
         Args:
             prospect_id: UUID string identifying the prospect.
@@ -141,7 +140,7 @@ class SocialService:
             db: SQLAlchemy session for database operations.
 
         Returns:
-            Dictionary with success status (always False), message ID, and error message.
+            Dictionary with success status, message ID, and error message if any.
         """
         if not db:
             logger.error("Database session is required")
@@ -181,11 +180,35 @@ class SocialService:
             personalized_content = template_obj.render(**context)[:1000]  # LinkedIn message limit
             logger.debug(f"Personalized LinkedIn message content: {personalized_content}")
 
-            # Placeholder for LinkedIn messaging
-            error_message = "LinkedIn messaging not implemented (requires OAuth access token)"
-            logger.warning(error_message)
-            success = False
-
+            # Send LinkedIn message using the Messaging API
+            headers = {
+                "Authorization": f"Bearer {self.linkedin_access_token}",
+                "Content-Type": "application/json",
+                "X-Restli-Protocol-Version": "2.0.0"
+            }
+            
+            # First, create a conversation
+            conversation_data = {
+                "recipients": [{"person": {"id": urn}}],
+                "subject": "Partnership Opportunity",
+                "body": personalized_content
+            }
+            
+            response = requests.post(
+                f"{self.linkedin_api_url}/messages",
+                headers=headers,
+                json=conversation_data,
+                timeout=10
+            )
+            
+            if response.status_code not in [200, 201]:
+                error_message = f"LinkedIn API request failed: {response.text}"
+                logger.error(error_message)
+                return {"success": False, "error": error_message}
+            
+            message_id = response.json().get("id")
+            success = bool(message_id)
+            
             # Log the message
             message_log = MessageLog(
                 id=str(uuid.uuid4()),
@@ -194,16 +217,21 @@ class SocialService:
                 message_type=MessageType.LINKEDIN.value,
                 content=personalized_content,
                 sent_at=datetime.now(timezone.utc),
-                status=MessageStatus.BOUNCED.value,
+                status=MessageStatus.SENT.value if success else MessageStatus.BOUNCED.value,
+                external_message_id=message_id
             )
 
             db.add(message_log)
             db.commit()
-            logger.info(f"Message logged with ID {message_log.id}")
+            logger.info(f"LinkedIn message sent to prospect {prospect_id}, success: {success}")
 
-            return {"success": success, "message_id": message_log.id, "error": error_message}
+            return {
+                "success": success,
+                "message_id": message_log.id,
+                "external_message_id": message_id
+            }
 
         except Exception as e:
             db.rollback()
-            logger.error(f"Error processing LinkedIn message: {e}")
+            logger.error(f"Error sending LinkedIn message: {str(e)}")
             return {"success": False, "error": str(e)}

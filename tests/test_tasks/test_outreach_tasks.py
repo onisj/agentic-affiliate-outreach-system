@@ -1,7 +1,7 @@
 # tests/test_tasks/test_outreach_tasks.py
 from unittest.mock import patch, MagicMock
 from tasks.outreach_tasks import send_outreach_message
-from database.models import AffiliateProspect, MessageTemplate, MessageType
+from database.models import AffiliateProspect, MessageTemplate, MessageType, MessageLog, MessageStatus
 from uuid import uuid4
 from datetime import datetime
 import pytz
@@ -80,14 +80,22 @@ def test_send_outreach_message_no_consent(reset_db):
         created_at=datetime.now(pytz.UTC),
         updated_at=datetime.now(pytz.UTC)
     )
+
+    # Mock the entire database session
+    mock_session = MagicMock()
     mock_query = MagicMock()
-    reset_db.query = mock_query
+    mock_session.query = mock_query
     mock_query.return_value.filter.return_value.first.side_effect = [prospect, template]
-    with patch("services.social_service.SocialService", return_value=MagicMock()):
-        with patch("services.email_service.EmailService", return_value=MagicMock()):
-            result = send_outreach_message(prospect_id, template_id, "EMAIL")
-            assert result["success"] is False
-            assert "Consent not given" in result["error"]
+    mock_session.commit = MagicMock()
+    mock_session.add = MagicMock()
+
+    # Mock get_db to return our mock session
+    with patch("database.session.get_db", return_value=iter([mock_session])):
+        with patch("services.social_service.SocialService", return_value=MagicMock()):
+            with patch("services.email_service.EmailService", return_value=MagicMock()):
+                result = send_outreach_message(prospect_id, template_id, "EMAIL")
+                assert result["success"] is False
+                assert "Consent not given" in result["error"]
 
 def test_send_outreach_message_twitter_missing_user_id(reset_db):
     """Test Twitter outreach failure due to missing user ID."""

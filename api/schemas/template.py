@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 class MessageTypeEnum(str, Enum):
     EMAIL = "email"
@@ -15,13 +16,13 @@ class TemplateCreate(BaseModel):
     message_type: str = "email"
 
 class TemplateResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     subject: Optional[str]
     content: str
     message_type: MessageTypeEnum
     is_active: bool
     created_at: datetime
+    updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
