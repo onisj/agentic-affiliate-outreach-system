@@ -1,0 +1,157 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+        test-type: ['unit', 'integration']
+      fail-fast: false
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install UV
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Create virtual environment
+      run: |
+        uv venv
+        source .venv/bin/activate
+
+    - name: Install dependencies
+      run: |
+        uv pip install -r requirements.txt
+        uv pip install -r requirements-test.txt
+
+    - name: Run linting
+      run: |
+        uv run flake8 .
+        uv run mypy .
+
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379/0
+        TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+        TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+        LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        PYTHONPATH: .
+      run: |
+        uv run pytest -m "${{ matrix.test-type }}" --cov=. --cov-report=xml
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        files: ./coverage.xml
+
+    - name: Cache test results
+      uses: actions/cache@v3
+      with:
+        path: |
+          .pytest_cache
+          .coverage
+          coverage.xml
+        key: ${{ runner.os }}-test-${{ hashFiles('**/test_*.py') }}
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install UV
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Create virtual environment
+      run: |
+        uv venv
+        source .venv/bin/activate
+
+    - name: Install dependencies
+      run: |
+        uv pip install -r requirements.txt
+        uv pip install bandit safety
+
+    - name: Run security checks
+      run: |
+        uv run bandit -r .
+        uv run safety check
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install UV
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Create virtual environment
+      run: |
+        uv venv
+        source .venv/bin/activate
+
+    - name: Install dependencies
+      run: |
+        uv pip install -r requirements.txt
+        uv pip install locust
+
+    - name: Run performance tests
+      run: |
+        uv run locust -f tests/load/locustfile.py --headless -t 1m 

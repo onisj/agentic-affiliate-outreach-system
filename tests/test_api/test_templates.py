@@ -10,7 +10,7 @@ def test_create_template_success(client: TestClient, reset_db):
             "name": "Welcome Email",
             "subject": "Join Our Program",
             "content": "Hi {{first_name}}, ...",
-            "message_type": "email"
+            "message_type": MessageType.EMAIL.value
         }
         mock_query = MagicMock()
         reset_db.query = mock_query
@@ -67,7 +67,7 @@ def test_update_template_success(client: TestClient, reset_db):
             "name": "Updated Name",
             "subject": "Updated Subject",
             "content": "Updated Content",
-            "message_type": "linkedin"
+            "message_type": MessageType.LINKEDIN.value
         }
         response = client.put(f"/templates/{template_id}", json=update_data)
         assert response.status_code == 200

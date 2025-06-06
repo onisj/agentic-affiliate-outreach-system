@@ -1,4 +1,4 @@
-from tasks.scoring_tasks import score_prospect
+from app.tasks.scoring_tasks import score_prospect
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 from database.models import AffiliateProspect

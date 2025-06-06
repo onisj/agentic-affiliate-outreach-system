@@ -1,219 +1,215 @@
-# Agentic Affiliate Outreach System
+# Affiliate Outreach System
 
-An autonomous system for discovering, engaging, and managing affiliate prospects via email, Twitter, and LinkedIn. Built with FastAPI, PostgreSQL, Redis, Celery, and Gradio.
+A comprehensive system for managing and automating outreach campaigns to prospects, with features for tracking responses, managing templates, and analyzing campaign performance.
 
+## Features
+
+- **Prospect Management**: Track and manage prospect information and outreach status
+- **Template Management**: Create and manage outreach message templates
+- **Automated Outreach**: Send personalized outreach messages to prospects
+- **Response Tracking**: Monitor and analyze prospect responses
+- **Campaign Analytics**: Track campaign performance and success metrics
+- **API Integration**: Connect with LinkedIn and other social platforms
+- **Email Integration**: Send and track emails via SendGrid
+- **Redis Caching**: Efficient data caching and task queue management
+- **Celery Tasks**: Asynchronous task processing for better performance
+
+## Tech Stack
+
+- **Backend**: FastAPI, SQLAlchemy, Celery
+- **Database**: PostgreSQL
+- **Cache**: Redis
+- **Email**: SendGrid
+- **Social Media**: LinkedIn API, Twitter API
+- **Testing**: Pytest
+- **Containerization**: Docker
+
+## Prerequisites
+
+- Python 3.8+
+- PostgreSQL
+- Redis
+- Docker (optional)
+- SendGrid API Key
+- LinkedIn API Credentials
+- Twitter API Credentials (API Key, API Secret, Access Token, Access Token Secret)
+
+## Quick Start
+
+### Local Development
+
+1. Clone the repository:
+
+    ```python
+    git clone https://github.com/yourusername/affiliate_outreach_system.git
+    cd affiliate_outreach_system
+    ```
+
+2. Create and activate a virtual environment:
+
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+
+3. Install dependencies:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. Set up environment variables:
+
+    ```bash
+    cp .env.example .env
+    # Edit .env with your configuration
+    ```
+
+5. Start Redis:
+
+    ```bash
+    # Using Homebrew (macOS)
+    brew services start redis
+
+    # Or using Docker
+    docker run -d -p 6379:6379 redis
+    ```
+
+6. Run database migrations:
+
+    ```bash
+    alembic upgrade head
+    ```
+
+7. Start the application:
+
+    ```bash
+    # Start the FastAPI server
+    uvicorn api.main:app --reload
+
+    # In a separate terminal, start Celery worker
+    ./scripts/run_celery_local.sh
+    ```
+
+### Docker Setup
+
+1. Build and start the containers:
+
+    ```bash
+    docker-compose up --build
+    ```
+
+2. Access the application:
+
+- API: <http://localhost:8000>
+- API Documentation: <http://localhost:8000/docs>
+- Health Check: <http://localhost:8000/health>
+
+## Environment Configuration
+
+The application uses environment variables for configuration. Copy `.env.example` to `.env` and set the following variables:
+
+```bash
+# Redis Configuration
+REDIS_LOCAL_URL=redis://localhost:6379/0
+REDIS_DOCKER_URL=redis://redis:6379/0
+
+# Database Configuration
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# API Keys
+SENDGRID_API_KEY=your_sendgrid_key
+LINKEDIN_ACCESS_TOKEN=your_linkedin_token
+
+# JWT Settings
+JWT_SECRET_KEY=your_secret_key
+JWT_ALGORITHM=HS256
+
+# Email Settings
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+EMAIL_FROM=noreply@yourdomain.com
+```
+
+## Development Workflow
+
+1. **Database Migrations**:
+
+    ```bash
+    # Create a new migration
+    alembic revision --autogenerate -m "description"
+
+    # Apply migrations
+    alembic upgrade head
+
+    # Rollback migration
+    alembic downgrade -1
+    ```
+
+2. **Running Tests**:
+
+    ```bash
+    # Run all tests
+    pytest
+
+    # Run specific test file
+    pytest tests/test_services/test_cache_service.py
+
+    # Run with verbose output
+    pytest -v
+
+    # Run with coverage
+    pytest --cov=.
+    ```
+
+3. **Code Quality**:
+
+    ```bash
+    # Run linter
+    flake8
+
+    # Run type checking
+    mypy .
+    ```
+
+## API Documentation
+
+Once the application is running, you can access:
+
+- Swagger UI: <http://localhost:8000/docs>
+- ReDoc: <http://localhost:8000/redoc>
 
 ## Project Structure
 
-```python
+```markdown
 affiliate_outreach_system/
-.
-├── alembic
-│   ├── env.py
-│   ├── script.py.mako
-│   └── versions
-│       ├── 0001_initial.py
-│       ├── 0002_add_content_table.py
-│       ├── 0003_add_sequence_table.py
-│       ├── 0004_add_ab_test_tables.py
-│       └── 0005_add_sequence_endpoint.py
-├── alembic.ini
-├── api
-│   ├── __init__.py
-│   ├── dependencies.py
-│   ├── endpoints
-│   │   ├── __init__.py
-│   │   ├── ab_testing.py
-│   │   ├── affiliate_discovery.py
-│   │   ├── campaigns.py
-│   │   ├── message_templates.py
-│   │   ├── monitoring.py
-│   │   ├── prospects.py
-│   │   ├── responses.py
-│   │   ├── templates.py
-│   │   └── webhooks.py
-│   ├── main.py
-│   ├── middleware
-│   │   ├── __init__.py
-│   │   ├── error_handler.py
-│   │   └── metrics.py
-│   ├── routers
-│   │   ├── __init__.py
-│   │   ├── ab_tests.py
-│   │   ├── campaigns.py
-│   │   ├── content.py
-│   │   ├── health.py
-│   │   ├── prospects.py
-│   │   ├── sequences.py
-│   │   ├── social.py
-│   │   ├── templates.py
-│   │   └── webhooks.py
-│   └── schemas
-│       ├── __init__.py
-│       ├── campaigns.py
-│       ├── content.py
-│       ├── prospect.py
-│       ├── sequence.py
-│       └── template.py
-├── awscliv2.zip
-├── config
-│   ├── __init__.py
-│   ├── grafana_dashboard.json
-│   ├── grafana_health_dashboard.json
-│   ├── grafana_notification_channels.yml
-│   ├── prometheus_rules.yml
-│   ├── prometheus.yml
-│   └── settings.py
-├── database
-│   ├── __init__.py
-│   ├── base.py
-│   ├── models.py
-│   └── session.py
-├── docker-compose.yml
-├── Dockerfile
-├── docs
-│   ├── api.md
-│   ├── setup.md
-│   └── system_design.md
-├── error.log
-├── LICENSE
-├── logging_config.py
-├── migrations
-│   ├── __init__.py
-│   ├── env.py
-│   ├── README
-│   ├── script.py.mako
-│   └── versions
-│       ├── 0e9ca861c07f_add_updated_at_to_message_templates.py
-│       ├── 565d5aabeb74_add_lead_source_to_affiliateprospect.py
-│       ├── a0022ed1f0f4_initial_models.py
-│       ├── add_metadata_to_message_logs.py
-│       ├── add_monitoring_tables.py
-│       ├── c13e97c678ac_add_updated_at_to_message_templates.py
-│       ├── ce6cb9564b24_initial_schema.py
-│       ├── d5b01d21423f_add_updated_at_to_message_templates.py
-│       └── e47db7712763_add_external_message_id_to_message_logs.py
-├── monitoring
-│   └── prometheus.yml
-├── nginx.conf
-├── project_structure.txt
-├── pytest_errors.log
-├── pytest.ini
-├── README.md
-├── requirements.txt
-├── run_dev.sh
-├── scripts
-│   ├── __init__.py
-│   ├── create_tables.py
-│   ├── drop_tables.py
-│   ├── run_ab_test.py
-│   ├── run_prospect_scoring.py
-│   └── seed_db.py
-├── services
-│   ├── __init__.py
-│   ├── ab_testing.py
-│   ├── affiliate_discovery.py
-│   ├── cache_service.py
-│   ├── cache.py
-│   ├── email_service.py
-│   ├── email.py
-│   ├── lead_discovery.py
-│   ├── linkedin.py
-│   ├── logging_service.py
-│   ├── messaging.py
-│   ├── monitoring_service.py
-│   ├── outreach.py
-│   ├── prospect_scoring.py
-│   ├── response_tracking.py
-│   ├── scoring_service.py
-│   ├── scrapers
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── linkedin.py
-│   │   └── twitter.py
-│   ├── social_service.py
-│   ├── twitter.py
-│   ├── validator.py
-│   ├── visualization_service.py
-│   └── webhook_service.py
-├── setup.sh
-├── tasks
-│   ├── __init__.py
-│   ├── celery_app.py
-│   ├── outreach_tasks.py
-│   ├── response_handler.py
-│   ├── scoring_tasks.py
-│   └── sequence_tasks.py
-├── templates
-│   ├── follow_up_email.html
-│   ├── sign_up.html
-│   └── welcome_email.html
-├── tests
-│   ├── __init__.py
-│   ├── conftest.py
-│   ├── load
-│   │   ├── __init__.py
-│   │   └── locustfile.py
-│   ├── test_api
-│   │   ├── __init__.py
-│   │   ├── test_campaigns.py
-│   │   ├── test_content.py
-│   │   ├── test_error_handler.py
-│   │   ├── test_prospects.py
-│   │   └── test_templates.py
-│   ├── test_services
-│   │   ├── __init__.py
-│   │   ├── test_cache_service.py
-│   │   ├── test_email_service.py
-│   │   ├── test_logging_service.py
-│   │   ├── test_monitoring_service.py
-│   │   ├── test_scoring_service.py
-│   │   ├── test_social_service.py
-│   │   └── test_validator.py
-│   └── test_tasks
-│       ├── __init__.py
-│       ├── test_outreach_tasks.py
-│       ├── test_response_handler.py
-│       ├── test_scoring_tasks.py
-│       └── test_sequence_tasks.py
-└── ui
-    ├── __init__.py
-    ├── gradio_app.py
-    └── streamlit_app.py
+├── alembic/              # Database migrations
+├── api/                  # FastAPI application
+├── config/              # Configuration files
+├── models/              # SQLAlchemy models
+├── schemas/             # Pydantic schemas
+├── services/            # Business logic
+├── tasks/               # Celery tasks
+├── templates/           # HTML templates
+├── tests/               # Test files
+├── .env.example         # Example environment variables
+├── docker-compose.yml   # Docker configuration
+└── requirements.txt     # Python dependencies
 ```
 
-## Features
-- Autonomous affiliate discovery using Twitter and LinkedIn APIs
-- Multi-channel outreach (email, Twitter, LinkedIn)
-- Personalized messaging with Jinja2 templates
-- Response tracking with NLP-based follow-ups
-- GDPR-compliant data storage
-- Admin dashboard via Gradio
+## Contributing
 
-## Quick Start
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd affiliate_outreach_system
-   ```
-2. Set up environment variables in `.env` (see `docs/setup.md`).
-3. Run with Docker:
-   ```bash
-   docker-compose up --build
-   ```
-4. Access:
-   - API: `http://localhost:8000/docs`
-   - Gradio: `http://localhost:7860`
-
-## Documentation
-- [System Design](docs/system_design.md)
-- [API Documentation](docs/api.md)
-- [Setup Instructions](docs/setup.md)
-
-## Testing
-```bash
-pytest tests/
-```
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
-MIT
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support, please open an issue in the GitHub repository or contact the maintainers.

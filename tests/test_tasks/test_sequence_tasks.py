@@ -1,4 +1,4 @@
-from tasks.sequence_tasks import process_sequence_step
+from app.tasks.sequence_tasks import process_sequence_step
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 from database.models import AffiliateProspect, Sequence, MessageTemplate, MessageType

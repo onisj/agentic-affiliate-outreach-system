@@ -1,12 +1,13 @@
 import os
 import pytest
 import logging
+import subprocess
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from database.base import Base
 from fastapi.testclient import TestClient
 from api.main import app
-from tasks.celery_app import celery_app
+from app.tasks.celery_app import celery_app
 from database.session import get_db
 
 logger = logging.getLogger(__name__)
@@ -24,9 +25,10 @@ def setup_env():
 
 @pytest.fixture
 def db_session():
-    # Use TEST_DB_URL for Docker/containerized environments, fallback to DB_URL for local testing
-    db_url = os.getenv("TEST_DB_URL", os.getenv("DB_URL", "postgresql+psycopg2://root:root@localhost:5432/affiliate_db"))
+    # Use PostgreSQL for testing
+    db_url = os.getenv("DATABASE_URL")
     engine = create_engine(db_url, echo=False)
+    # Base.metadata.create_all(bind=engine)  # Commented out to avoid duplicate table/index errors
     Session = sessionmaker(bind=engine)
     connection = engine.connect()
     transaction = connection.begin()
@@ -38,6 +40,9 @@ def db_session():
         transaction.rollback()
         connection.close()
         engine.dispose()
+        # Clean up the test database file
+        if os.path.exists("test.db"):
+            os.remove("test.db")
 
 @pytest.fixture
 def client(db_session):
@@ -71,11 +76,12 @@ def setup_celery():
     celery_app.conf.task_always_eager = False
     logger.debug("Reset Celery task_always_eager to False")
 
-@pytest.fixture(autouse=True)
-def clean_tables(db_session):
-    """Truncate campaigns, prospects, and content tables before each test function."""
-    db_session.execute(text('TRUNCATE TABLE outreach_campaigns RESTART IDENTITY CASCADE;'))
-    db_session.execute(text('TRUNCATE TABLE affiliate_prospects RESTART IDENTITY CASCADE;'))
-    db_session.execute(text('TRUNCATE TABLE content RESTART IDENTITY CASCADE;'))
-    db_session.commit()
+@pytest.fixture(scope="session", autouse=True)
+def apply_migrations():
+    """Run Alembic migrations before any tests."""
+    logger.debug("Running Alembic migrations...")
+    result = subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True, text=True)
+    logger.debug(f"Alembic migration output: {result.stdout}")
+    if result.stderr:
+        logger.error(f"Alembic migration errors: {result.stderr}")
     yield

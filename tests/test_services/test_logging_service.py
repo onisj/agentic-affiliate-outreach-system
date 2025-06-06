@@ -2,7 +2,7 @@ import pytest
 import logging
 import json
 from pathlib import Path
-from services.logging_service import LoggingService, log_execution_time
+from app.services.logging_service import LoggingService, log_execution_time
 import asyncio
 from datetime import datetime
 

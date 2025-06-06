@@ -104,7 +104,7 @@ class TestCampaignCreation:
         
         data = response.json()
         assert data["name"] == campaign_data["name"]
-        assert data["status"] == "draft"  # String value, not enum
+        assert data["status"] == CampaignStatus.DRAFT.value  # Use enum value
         assert data["template_id"] == campaign_data["template_id"]
         assert data["target_criteria"] == campaign_data["target_criteria"]
         

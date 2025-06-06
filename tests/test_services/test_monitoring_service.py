@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta, timezone
-from services.monitoring_service import MonitoringService, AlertType, AlertSeverity, AlertConfig
-from services.logging_service import LoggingService
+from app.services.monitoring import MonitoringService, AlertType, AlertSeverity, AlertConfig
+from app.services.logging_service import LoggingService
 from database.models import Alert, SystemMetric, WebhookMetric
 from sqlalchemy.orm import Session
 from unittest.mock import Mock, patch, AsyncMock

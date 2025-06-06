@@ -1,4 +1,4 @@
-from tasks.response_handler import handle_prospect_response
+from app.tasks.response_handler import handle_prospect_response
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 from database.models import MessageLog, AffiliateProspect, MessageTemplate
