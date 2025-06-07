@@ -1,14 +1,19 @@
 """
-Shared Components Package
+Shared Package
 
-This package contains shared utilities, models, and configurations
-used across all microservices in the Agentic Affiliate Outreach System.
+This package contains shared utilities, constants, and common code used across
+the application.
 
-Key Components:
-- Common data models and schemas
-- Shared utilities and helper functions
-- Configuration management
-- Event sourcing and CQRS infrastructure
-- Common exceptions and error handling
-- Logging and monitoring utilities
+Modules:
+    constants: Application constants
+    utils: Shared utility functions
+    decorators: Shared decorators
+    exceptions: Shared exceptions
+    types: Shared type definitions
 """
+
+from .constants import *
+from .utils import *
+from .decorators import *
+from .exceptions import *
+from .types import *

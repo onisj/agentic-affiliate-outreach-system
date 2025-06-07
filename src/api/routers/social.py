@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database.session import get_db
 from database.models import AffiliateProspect, MessageTemplate
-from app.services.social_service import SocialService
+from src.app.services.social_service import SocialService
 from typing import Dict, Any
 
 router = APIRouter(prefix="/social", tags=["social"])

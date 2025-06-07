@@ -1,14 +1,18 @@
 """
-Dynamic Outreach Orchestration Service
+Outreach Service Package
 
-This service implements the intelligent outreach system that manages
-multi-channel campaigns with advanced personalization and timing optimization.
+This package contains services for managing outreach campaigns and communications.
 
-Key Components:
-- Campaign Strategy Engine for developing outreach strategies
-- Multi-Channel Message Delivery (Email, LinkedIn, Twitter, etc.)
-- Personalization AI for creating contextually-aware messages
-- Timing Optimizer for optimal engagement timing
-- Conversation Flow Management for automated follow-ups
-- A/B Testing Framework for message optimization
+Modules:
+    outreach_service: Main service for outreach management
+    email: Email communication service
+    social: Social media communication service
+    sequence: Sequence management service
 """
+
+from .outreach_service import OutreachService
+from .email import EmailService
+from .social import SocialMediaService
+from .sequence import SequenceService
+
+__all__ = ['OutreachService', 'EmailService', 'SocialMediaService', 'SequenceService'] 

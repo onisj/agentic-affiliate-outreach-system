@@ -1,4 +1,4 @@
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
+from prometheus_client import Counter, Histogram, Gauge
 from fastapi import Request
 import time
 from typing import Callable

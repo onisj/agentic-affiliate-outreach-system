@@ -1,14 +1,16 @@
 """
-Multi-Platform Discovery Engine
+Discovery Service Package
 
-This service implements the intelligent discovery system that autonomously
-finds high-potential affiliate marketers across multiple platforms using
-advanced pattern recognition and behavioral analysis.
+This package contains services for discovering and qualifying prospects.
 
-Key Components:
-- Platform-specific scrapers (LinkedIn, Twitter, YouTube, TikTok, Instagram, Reddit)
-- Content analysis AI for extracting insights from posts and profiles
-- Behavioral pattern recognition for identifying influence and engagement
-- Competitive intelligence for gap analysis and opportunity identification
-- Real-time trend tracking and emerging niche detection
+Modules:
+    discovery_service: Main service for prospect discovery
+    qualification: Prospect qualification logic
+    enrichment: Prospect data enrichment
 """
+
+from .discovery_service import DiscoveryService
+from .qualification import ProspectQualifier
+from .enrichment import ProspectEnricher
+
+__all__ = ['DiscoveryService', 'ProspectQualifier', 'ProspectEnricher'] 

@@ -1,215 +1,240 @@
-# Affiliate Outreach System
+# Agentic Affiliate Outreach System
 
-A comprehensive system for managing and automating outreach campaigns to prospects, with features for tracking responses, managing templates, and analyzing campaign performance.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## Features
+## 🚀 Overview
 
-- **Prospect Management**: Track and manage prospect information and outreach status
-- **Template Management**: Create and manage outreach message templates
-- **Automated Outreach**: Send personalized outreach messages to prospects
-- **Response Tracking**: Monitor and analyze prospect responses
-- **Campaign Analytics**: Track campaign performance and success metrics
-- **API Integration**: Connect with LinkedIn and other social platforms
-- **Email Integration**: Send and track emails via SendGrid
-- **Redis Caching**: Efficient data caching and task queue management
-- **Celery Tasks**: Asynchronous task processing for better performance
+The **Agentic Affiliate Outreach System** is an autonomous AI-powered platform that revolutionizes affiliate marketing through intelligent prospect discovery, personalized outreach campaigns, and automated relationship management across multiple social media platforms.
 
-## Tech Stack
+### Key Features
 
-- **Backend**: FastAPI, SQLAlchemy, Celery
-- **Database**: PostgreSQL
-- **Cache**: Redis
-- **Email**: SendGrid
-- **Social Media**: LinkedIn API, Twitter API
-- **Testing**: Pytest
-- **Containerization**: Docker
+- 🤖 **Autonomous AI Agent**: Self-directed decision-making with minimal human intervention
+- 🔍 **Multi-Platform Discovery**: Intelligent prospect discovery across LinkedIn, Twitter, YouTube, TikTok, Instagram, and Reddit
+- 📧 **Dynamic Outreach**: AI-powered personalization with optimal timing and multi-channel delivery
+- 📊 **Real-time Analytics**: Comprehensive performance tracking and predictive insights
+- 🔄 **Event-Driven Architecture**: Scalable microservices with CQRS and event sourcing
+- 🛡️ **Security & Compliance**: GDPR-compliant with ethical AI practices
 
-## Prerequisites
+## 🏗️ Architecture
 
-- Python 3.8+
-- PostgreSQL
-- Redis
-- Docker (optional)
-- SendGrid API Key
-- LinkedIn API Credentials
-- Twitter API Credentials (API Key, API Secret, Access Token, Access Token Secret)
+This system follows **Clean Architecture** principles with a **microservices** approach:
 
-## Quick Start
+```
+src/
+├── core/                 # Core business logic and domain models
+├── services/             # Autonomous microservices
+├── shared/               # Shared components and utilities
+├── api/                  # RESTful API layer
+└── web/                  # Web interfaces and frontend
+```
+
+### Core Services
+
+- **Discovery Service**: Multi-platform prospect discovery and analysis
+- **Intelligence Service**: Autonomous AI agent for decision-making
+- **Outreach Service**: Campaign orchestration and message delivery
+- **Analytics Service**: Performance tracking and business intelligence
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL 13+
+- Redis 6+
+- Docker & Docker Compose (optional)
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/your-org/affiliate-outreach-system.git
+   cd affiliate-outreach-system
+   ```
+
+2. **Set up virtual environment**
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment**
+
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. **Initialize database**
+
+   ```bash
+   alembic upgrade head
+   python data/seeds/seed_db.py
+   ```
+
+6. **Start the application**
+
+   ```bash
+   # Start API server
+   python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+   
+   # Start Celery worker (in another terminal)
+   celery -A src.core.application.tasks.celery_app worker --loglevel=info
+   ```
+
+### Docker Deployment
+
+```bash
+# Build and start all services
+docker-compose -f deployment/docker/docker-compose.yml up -d
+
+# View logs
+docker-compose logs -f
+```
+
+## 📖 Documentation
+
+- [**Architecture Guide**](docs/system_design.md) - Comprehensive system architecture
+- [**API Documentation**](docs/api.md) - RESTful API reference
+- [**Setup Guide**](docs/setup.md) - Detailed installation and configuration
+- [**Testing Guide**](docs/testing.md) - Testing strategies and guidelines
+- [**Project Structure**](docs/project_structure_standardized.md) - Directory organization
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test categories
+pytest tests/test_api/          # API tests
+pytest tests/test_services/     # Service tests
+pytest tests/load/              # Load tests
+```
+
+## 🔧 Development
+
+### Project Structure
+
+```
+affiliate_outreach_system/
+├── src/                    # Source code
+│   ├── core/              # Core business logic
+│   ├── services/          # Microservices
+│   ├── shared/            # Shared components
+│   ├── api/               # API layer
+│   └── web/               # Web interfaces
+├── tests/                 # Test suite
+├── data/                  # Data management
+├── deployment/            # Deployment configurations
+├── monitoring/            # Monitoring and observability
+├── tools/                 # Development tools
+└── docs/                  # Documentation
+```
+
+### Development Workflow
+
+1. **Feature Development**: Follow clean architecture patterns
+2. **Testing**: Write comprehensive tests for all components
+3. **Documentation**: Update relevant README files and docs
+4. **Code Quality**: Use black, flake8, and mypy for code quality
+5. **Deployment**: Use Docker and Kubernetes for deployment
+
+### Code Style
+
+```bash
+# Format code
+black src/ tests/
+
+# Lint code
+flake8 src/ tests/
+
+# Type checking
+mypy src/
+```
+
+## 🚀 Deployment
 
 ### Local Development
 
-1. Clone the repository:
+```bash
+# Start development server
+tools/scripts/run_dev.sh
+```
 
-    ```python
-    git clone https://github.com/yourusername/affiliate_outreach_system.git
-    cd affiliate_outreach_system
-    ```
-
-2. Create and activate a virtual environment:
-
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
-
-3. Install dependencies:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. Set up environment variables:
-
-    ```bash
-    cp .env.example .env
-    # Edit .env with your configuration
-    ```
-
-5. Start Redis:
-
-    ```bash
-    # Using Homebrew (macOS)
-    brew services start redis
-
-    # Or using Docker
-    docker run -d -p 6379:6379 redis
-    ```
-
-6. Run database migrations:
-
-    ```bash
-    alembic upgrade head
-    ```
-
-7. Start the application:
-
-    ```bash
-    # Start the FastAPI server
-    uvicorn api.main:app --reload
-
-    # In a separate terminal, start Celery worker
-    ./scripts/run_celery_local.sh
-    ```
-
-### Docker Setup
-
-1. Build and start the containers:
-
-    ```bash
-    docker-compose up --build
-    ```
-
-2. Access the application:
-
-- API: <http://localhost:8000>
-- API Documentation: <http://localhost:8000/docs>
-- Health Check: <http://localhost:8000/health>
-
-## Environment Configuration
-
-The application uses environment variables for configuration. Copy `.env.example` to `.env` and set the following variables:
+### Production Deployment
 
 ```bash
-# Redis Configuration
-REDIS_LOCAL_URL=redis://localhost:6379/0
-REDIS_DOCKER_URL=redis://redis:6379/0
+# Deploy to Kubernetes
+kubectl apply -f deployment/k8s/
 
-# Database Configuration
-DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-
-# API Keys
-SENDGRID_API_KEY=your_sendgrid_key
-LINKEDIN_ACCESS_TOKEN=your_linkedin_token
-
-# JWT Settings
-JWT_SECRET_KEY=your_secret_key
-JWT_ALGORITHM=HS256
-
-# Email Settings
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=apikey
-EMAIL_FROM=noreply@yourdomain.com
+# Deploy with Docker Compose
+docker-compose -f deployment/docker/docker-compose.yml up -d
 ```
 
-## Development Workflow
+### Infrastructure as Code
 
-1. **Database Migrations**:
-
-    ```bash
-    # Create a new migration
-    alembic revision --autogenerate -m "description"
-
-    # Apply migrations
-    alembic upgrade head
-
-    # Rollback migration
-    alembic downgrade -1
-    ```
-
-2. **Running Tests**:
-
-    ```bash
-    # Run all tests
-    pytest
-
-    # Run specific test file
-    pytest tests/test_services/test_cache_service.py
-
-    # Run with verbose output
-    pytest -v
-
-    # Run with coverage
-    pytest --cov=.
-    ```
-
-3. **Code Quality**:
-
-    ```bash
-    # Run linter
-    flake8
-
-    # Run type checking
-    mypy .
-    ```
-
-## API Documentation
-
-Once the application is running, you can access:
-
-- Swagger UI: <http://localhost:8000/docs>
-- ReDoc: <http://localhost:8000/redoc>
-
-## Project Structure
-
-```markdown
-affiliate_outreach_system/
-├── alembic/              # Database migrations
-├── api/                  # FastAPI application
-├── config/              # Configuration files
-├── models/              # SQLAlchemy models
-├── schemas/             # Pydantic schemas
-├── services/            # Business logic
-├── tasks/               # Celery tasks
-├── templates/           # HTML templates
-├── tests/               # Test files
-├── .env.example         # Example environment variables
-├── docker-compose.yml   # Docker configuration
-└── requirements.txt     # Python dependencies
+```bash
+# Deploy infrastructure with Terraform
+cd deployment/terraform/
+terraform init
+terraform plan
+terraform apply
 ```
 
-## Contributing
+## 📊 Monitoring
+
+- **Grafana Dashboards**: `http://localhost:3000`
+- **Prometheus Metrics**: `http://localhost:9090`
+- **API Health Check**: `http://localhost:8000/health`
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+### Development Guidelines
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- Follow clean architecture principles
+- Write comprehensive tests
+- Update documentation
+- Follow code style guidelines
+- Use conventional commit messages
 
-## Support
+## 📄 License
 
-For support, please open an issue in the GitHub repository or contact the maintainers.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/your-org/affiliate-outreach-system/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/affiliate-outreach-system/discussions)
+
+## 🙏 Acknowledgments
+
+- Built with [FastAPI](https://fastapi.tiangolo.com/)
+- AI powered by [OpenAI](https://openai.com/) and [LangChain](https://langchain.com/)
+- Infrastructure managed with [Docker](https://docker.com/) and [Kubernetes](https://kubernetes.io/)
+- Monitoring with [Grafana](https://grafana.com/) and [Prometheus](https://prometheus.io/)
+
+---
+
+**Built with ❤️ for autonomous affiliate marketing**

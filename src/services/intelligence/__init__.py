@@ -1,14 +1,18 @@
 """
-Agentic Intelligence Framework
+Intelligence Service Package
 
-This service implements the core AI agent that operates as the autonomous
-decision-making engine for the affiliate outreach system.
+This package contains services for prospect intelligence and analysis.
 
-Key Components:
-- AI Decision Engine with reasoning and planning capabilities
-- Machine Learning Pipeline for continuous learning and optimization
-- Knowledge Base for storing and retrieving contextual information
-- Reasoning Engine for complex decision-making scenarios
-- Reinforcement Learning for strategy optimization
-- Natural Language Processing for content analysis and generation
+Modules:
+    scoring: Prospect scoring service
+    sentiment: Sentiment analysis service
+    personalization: Content personalization service
+    timing: Optimal timing service
 """
+
+from .scoring import ScoringService
+from .sentiment import SentimentAnalyzer
+from .personalization import PersonalizationService
+from .timing import TimingService
+
+__all__ = ['ScoringService', 'SentimentAnalyzer', 'PersonalizationService', 'TimingService'] 

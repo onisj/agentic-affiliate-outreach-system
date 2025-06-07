@@ -1,237 +1,210 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional, Dict, Any
-from database.models import MessageTemplate, MessageLog, MessageType
-from database.session import get_db
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from app.services.cache import cache_result, cache
-import logging
-from app.services.messaging import MessagingService
-from pydantic import BaseModel
+"""
+Message Template Endpoints
 
-logger = logging.getLogger(__name__)
+This module provides endpoints for managing message templates.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+from datetime import datetime
+
+from database.models import User, MessageTemplate, TemplateType
+from services.outreach.templates import MessageTemplates
+from api.dependencies.auth import get_current_user
+
 router = APIRouter()
 
-# Cache warming functions
-async def warm_template_list():
-    """Warm cache with list of all templates."""
-    db = next(get_db())
-    try:
-        templates = db.query(MessageTemplate).all()
-        return [template.to_dict() for template in templates]
-    except Exception as e:
-        logger.error(f"Error warming template list cache: {e}")
-        return None
-
-async def warm_template_stats():
-    """Warm cache with template usage statistics."""
-    db = next(get_db())
-    try:
-        stats = {}
-        templates = db.query(MessageTemplate).all()
-        for template in templates:
-            stats[template.id] = {
-                'total_uses': db.query(func.count(MessageLog.id))
-                    .filter(MessageLog.template_id == template.id)
-                    .scalar(),
-                'success_rate': db.query(
-                    func.sum(case((MessageLog.status == 'sent', 1), else_=0)) * 100.0 /
-                    func.count(MessageLog.id)
-                ).filter(
-                    MessageLog.template_id == template.id
-                ).scalar() or 0
-            }
-        return stats
-    except Exception as e:
-        logger.error(f"Error warming template stats cache: {e}")
-        return None
-
-# Start cache warming
-cache.warmer.start_warming("templates:list", warm_template_list, ttl=300, interval=240)  # 5 min TTL, 4 min interval
-cache.warmer.start_warming("templates:stats", warm_template_stats, ttl=300, interval=240)
-
-@router.get("/templates/", response_model=List[dict])
-@cache_result(ttl=300, key_prefix="templates")
-async def list_templates(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
-    """List all message templates."""
-    templates = db.query(MessageTemplate).offset(skip).limit(limit).all()
-    return [template.to_dict() for template in templates]
-
-@router.get("/templates/{template_id}", response_model=dict)
-@cache_result(ttl=600, key_prefix="templates")
-async def get_template(
-    template_id: str,
-    db: Session = Depends(get_db)
-):
-    """Get a specific template by ID."""
-    template = db.query(MessageTemplate).filter(MessageTemplate.id == template_id).first()
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return template.to_dict()
-
-@router.get("/templates/{template_id}/stats", response_model=dict)
-@cache_result(ttl=300, key_prefix="templates")
-async def get_template_stats(
-    template_id: str,
-    db: Session = Depends(get_db)
-):
-    """Get statistics for a specific template."""
-    template = db.query(MessageTemplate).filter(MessageTemplate.id == template_id).first()
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    
-    stats = {
-        'total_uses': db.query(func.count(MessageLog.id))
-            .filter(MessageLog.template_id == template_id)
-            .scalar(),
-        'success_rate': db.query(
-            func.sum(case((MessageLog.status == 'sent', 1), else_=0)) * 100.0 /
-            func.count(MessageLog.id)
-        ).filter(
-            MessageLog.template_id == template_id
-        ).scalar() or 0
-    }
-    return stats
-
 class TemplateCreate(BaseModel):
-    """Schema for creating a message template."""
     name: str
+    description: Optional[str]
     content: str
-    message_type: MessageType
-    subject: Optional[str] = None
-    variables: Optional[List[str]] = None
+    type: TemplateType
+    variables: List[str]
+    channel: str
+    is_active: bool = True
 
-class ABTestCreate(BaseModel):
-    """Schema for creating an A/B test."""
-    campaign_id: str
-    name: str
-    variants: List[Dict[str, Any]]
+class TemplateUpdate(BaseModel):
+    name: Optional[str]
+    description: Optional[str]
+    content: Optional[str]
+    type: Optional[TemplateType]
+    variables: Optional[List[str]]
+    channel: Optional[str]
+    is_active: Optional[bool]
 
 class TemplateResponse(BaseModel):
-    """Schema for template response."""
-    id: str
+    id: int
     name: str
-    message_type: MessageType
-    created_at: str
+    description: Optional[str]
+    content: str
+    type: TemplateType
+    variables: List[str]
+    channel: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
 
-class ABTestResponse(BaseModel):
-    """Schema for A/B test response."""
-    id: str
-    name: str
-    variants: List[Dict[str, Any]]
+class TemplatePreview(BaseModel):
+    template_id: int
+    variables: Dict[str, str]
 
-@router.post("/templates", response_model=TemplateResponse)
+@router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
 async def create_template(
     template: TemplateCreate,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ):
-    """Create a new message template."""
-    service = MessagingService(db)
+    """Create a new message template"""
     try:
-        return await service.create_template(
-            name=template.name,
-            content=template.content,
-            message_type=template.message_type,
-            subject=template.subject,
-            variables=template.variables
-        )
+        template_data = template.dict()
+        template_data["created_by"] = current_user.id
+        
+        new_template = await MessageTemplate.create(**template_data)
+        return new_template
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
-@router.post("/ab-tests", response_model=ABTestResponse)
-async def create_ab_test(
-    ab_test: ABTestCreate,
-    db: Session = Depends(get_db)
+@router.get("", response_model=List[TemplateResponse])
+async def list_templates(
+    channel: Optional[str] = None,
+    type: Optional[TemplateType] = None,
+    is_active: Optional[bool] = None,
+    current_user: User = Depends(get_current_user)
 ):
-    """Create a new A/B test."""
-    service = MessagingService(db)
+    """List all message templates"""
     try:
-        return await service.create_ab_test(
-            campaign_id=ab_test.campaign_id,
-            name=ab_test.name,
-            variants=ab_test.variants
+        templates = await MessageTemplate.get_all(
+            channel=channel,
+            type=type,
+            is_active=is_active
         )
+        return templates
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
-@router.post("/templates/{template_id}/personalize")
-async def personalize_message(
-    template_id: str,
-    data: Dict[str, Any],
-    ab_test_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+@router.get("/{template_id}", response_model=TemplateResponse)
+async def get_template(
+    template_id: int,
+    current_user: User = Depends(get_current_user)
 ):
-    """Get a personalized message from a template."""
-    service = MessagingService(db)
+    """Get template details"""
     try:
-        return await service.get_personalized_message(
-            template_id=template_id,
-            data=data,
-            ab_test_id=ab_test_id
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        template = await MessageTemplate.get_by_id(template_id)
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        return template
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
-@router.post("/ab-tests/{ab_test_id}/results")
-async def update_ab_test_results(
-    ab_test_id: str,
-    variant_id: str,
-    sent_count: int,
-    open_rate: float,
-    click_rate: float,
-    reply_rate: float,
-    db: Session = Depends(get_db)
-):
-    """Update A/B test results."""
-    service = MessagingService(db)
-    success = await service.update_ab_test_results(
-        ab_test_id=ab_test_id,
-        variant_id=variant_id,
-        sent_count=sent_count,
-        open_rate=open_rate,
-        click_rate=click_rate,
-        reply_rate=reply_rate
-    )
-    if not success:
-        raise HTTPException(status_code=400, detail="Failed to update A/B test results")
-    return {"message": "Results updated successfully"}
-
-@router.put("/templates/{template_id}", response_model=dict)
-@cache.invalidate_on_update("templates:*")
+@router.put("/{template_id}", response_model=TemplateResponse)
 async def update_template(
-    template_id: str,
-    template: dict,
-    db: Session = Depends(get_db)
+    template_id: int,
+    template_update: TemplateUpdate,
+    current_user: User = Depends(get_current_user)
 ):
-    """Update an existing template."""
-    existing_template = db.query(MessageTemplate).filter(MessageTemplate.id == template_id).first()
-    if not existing_template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    
-    for key, value in template.items():
-        setattr(existing_template, key, value)
-    
-    db.commit()
-    db.refresh(existing_template)
-    return existing_template.to_dict()
+    """Update template details"""
+    try:
+        template = await MessageTemplate.get_by_id(template_id)
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        
+        update_data = template_update.dict(exclude_unset=True)
+        updated_template = await template.update(**update_data)
+        return updated_template
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
-@router.delete("/templates/{template_id}")
-@cache.invalidate_on_update("templates:*")
+@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(
-    template_id: str,
-    db: Session = Depends(get_db)
+    template_id: int,
+    current_user: User = Depends(get_current_user)
 ):
-    """Delete a template."""
-    template = db.query(MessageTemplate).filter(MessageTemplate.id == template_id).first()
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    
-    db.delete(template)
-    db.commit()
-    return {"message": "Template deleted successfully"} 
+    """Delete a template"""
+    try:
+        template = await MessageTemplate.get_by_id(template_id)
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        
+        await template.delete()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.post("/{template_id}/preview")
+async def preview_template(
+    template_id: int,
+    preview_data: TemplatePreview,
+    current_user: User = Depends(get_current_user)
+):
+    """Preview a template with variables"""
+    try:
+        template = await MessageTemplate.get_by_id(template_id)
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        
+        message_templates = MessageTemplates()
+        preview = message_templates.personalize_template(
+            template.content,
+            preview_data.variables,
+            template.channel
+        )
+        return {"preview": preview}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.post("/{template_id}/duplicate", response_model=TemplateResponse)
+async def duplicate_template(
+    template_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """Duplicate an existing template"""
+    try:
+        template = await MessageTemplate.get_by_id(template_id)
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        
+        template_data = template.dict()
+        template_data.pop("id")
+        template_data["name"] = f"{template.name} (Copy)"
+        template_data["created_by"] = current_user.id
+        
+        new_template = await MessageTemplate.create(**template_data)
+        return new_template
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        ) 
