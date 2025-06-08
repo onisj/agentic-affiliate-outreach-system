@@ -18,4 +18,4 @@ from .middleware import *
 from .routers import *
 from .schemas import *
 from .dependencies import *
-from .main import *
+from .app import *

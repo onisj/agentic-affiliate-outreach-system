@@ -7,12 +7,12 @@ platform-specific data, engagement history, and user preferences.
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-from database.models import (
+from src.database.models import (
     User, Prospect, MessageTemplate,
     EngagementLog, ChannelMetrics
 )
-from services.monitoring import MonitoringService
-from services.analytics.channel_analytics import ChannelAnalytics
+from src.services.monitoring import MonitoringService
+from src.services.analytics.channel_analytics import ChannelAnalytics
 
 class ContextEngine:
     def __init__(self, user_id: int):

@@ -7,12 +7,12 @@ strategy, personalization, timing optimization, and channel selection.
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
-from database.models import (
+from src.database.models import (
     User, Prospect, Campaign, MessageTemplate,
     EngagementLog, ChannelMetrics
 )
-from services.analytics.channel_analytics import ChannelAnalytics
-from services.monitoring import MonitoringService
+from src.services.analytics.channel_analytics import ChannelAnalytics
+from src.services.monitoring import MonitoringService
 
 class StrategyEngine:
     def __init__(self, user_id: int):
