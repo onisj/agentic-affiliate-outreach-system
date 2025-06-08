@@ -12,7 +12,7 @@ from src.database.models import (
     EngagementLog, ChannelMetrics
 )
 from src.services.analytics.channel_analytics import ChannelAnalytics
-from src.services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 class StrategyEngine:
     def __init__(self, user_id: int):

@@ -4,20 +4,14 @@ Reddit Scraper
 This module implements scraping functionality for Reddit profiles and content.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
-from datetime import datetime
 import asyncio
-import aiohttp
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from aiohttp import ClientResponseError
 
-from services.monitoring import MonitoringService
 from discovery.models.data_object import DataObject
 from .base_scraper import BaseScraper
 from .rate_limiter import RateLimiter

@@ -18,7 +18,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

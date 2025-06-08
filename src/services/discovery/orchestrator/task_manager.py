@@ -10,13 +10,12 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 import asyncio
 import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 from services.discovery.adapters.base_scraper import BaseScraper
 from .proxy_manager import ProxyManager
-from .rate_limiter import RateLimiter
+from adapters.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 

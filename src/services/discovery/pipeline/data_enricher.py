@@ -4,12 +4,8 @@ Data Enricher
 This module implements data enrichment for scraped data.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
-from datetime import datetime
-import asyncio
-import aiohttp
-from bs4 import BeautifulSoup
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -17,7 +13,7 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 import spacy
 from textblob import TextBlob
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

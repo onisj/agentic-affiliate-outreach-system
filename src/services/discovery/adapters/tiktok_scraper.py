@@ -17,7 +17,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from aiohttp import ClientResponseError
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 from discovery.models.data_object import DataObject
 from .base_scraper import BaseScraper
 from .rate_limiter import RateLimiter

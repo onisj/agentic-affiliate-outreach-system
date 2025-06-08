@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

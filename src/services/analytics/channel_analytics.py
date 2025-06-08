@@ -10,7 +10,7 @@ from database.models import (
     User, MessageLog, EngagementLog, ChannelMetrics,
     UserMetrics, ContentMetrics, CampaignMetrics
 )
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 class ChannelAnalytics:
     def __init__(self, user_id: int):

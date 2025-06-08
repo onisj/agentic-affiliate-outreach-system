@@ -14,7 +14,7 @@ from collections import defaultdict, Counter
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

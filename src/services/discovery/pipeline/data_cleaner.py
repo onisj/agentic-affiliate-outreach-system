@@ -11,10 +11,8 @@ from datetime import datetime
 import unicodedata
 from bs4 import BeautifulSoup
 import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

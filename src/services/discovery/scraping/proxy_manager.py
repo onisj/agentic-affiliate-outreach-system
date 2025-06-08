@@ -11,7 +11,7 @@ import random
 import aiohttp
 from datetime import datetime, timedelta
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

@@ -5,13 +5,12 @@ This module manages proxy rotation and validation for web scraping operations.
 """
 
 from typing import Dict, List, Optional, Any
-import asyncio
 import logging
 import random
 import aiohttp
 from datetime import datetime, timedelta
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

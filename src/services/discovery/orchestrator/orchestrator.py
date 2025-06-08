@@ -5,13 +5,12 @@ This module implements the orchestrator for the affiliate discovery process,
 managing the platform adapters, intelligence processors, and data pipeline.
 """
 
-from typing import Dict, List, Any, Optional
-import logging
+from typing import Dict, List, Any
 from datetime import datetime
 import asyncio
 from collections import defaultdict
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 from services.discovery.adapters.linkedin_scraper import LinkedInScraper
 from services.discovery.adapters.twitter_scraper import TwitterScraper
 from services.discovery.adapters.youtube_scraper import YouTubeScraper

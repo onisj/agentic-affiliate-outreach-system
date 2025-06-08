@@ -16,13 +16,15 @@ Modules:
     ab_testing: A/B testing services
 """
 
-from .discovery import *
-from .outreach import *
-from .intelligence import *
-from .analytics import *
-from .scoring import *
-from .sentiment import *
-from .cache import *
-from .monitoring import *
-from .visualization import *
-from .ab_testing import * 
+from ..discovery import *
+from ..outreach import *
+from ..intelligence import *
+from ..analytics import *
+from ..scoring import *
+from ..sentiment import *
+from ..cache import *
+from .monitoring import MonitoringService
+from ..visualization import *
+from ..ab_testing import *
+
+__all__ = ['MonitoringService'] 

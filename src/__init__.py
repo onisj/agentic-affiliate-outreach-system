@@ -23,6 +23,6 @@ from .app import *
 from .config import *
 from .core import *
 from .database import *
-from .services import *
+from .services.monitoring import *
 from .shared import *
 from .web import *

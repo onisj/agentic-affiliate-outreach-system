@@ -5,14 +5,12 @@ This module implements AI-powered competitive intelligence for affiliate discove
 analyzing competitors, market trends, and identifying opportunities.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
-from datetime import datetime, timedelta
 import numpy as np
-from collections import Counter, defaultdict
 import networkx as nx
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

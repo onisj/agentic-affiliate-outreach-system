@@ -15,7 +15,7 @@ import re
 
 from database.models import User, APIKey, APIKeyUsage
 from api.dependencies.auth import get_current_user
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 router = APIRouter()
 

@@ -12,7 +12,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 from services.discovery.scraping.base_scraper import BaseScraper
 from services.discovery.scraping.proxy_manager import ProxyManager
 from src.services.discovery.adapters.rate_limiter import RateLimiter

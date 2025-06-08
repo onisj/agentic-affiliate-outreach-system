@@ -4,14 +4,11 @@ Data Validator
 This module implements data validation for scraped data.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
-from datetime import datetime
 import re
 from jsonschema import validate, ValidationError
-import json
-
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

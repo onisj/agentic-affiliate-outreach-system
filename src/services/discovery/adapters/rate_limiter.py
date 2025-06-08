@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timedelta
 from collections import defaultdict
 import aiohttp
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from src.database.models import (
     User, Prospect, MessageTemplate,
     EngagementLog, ChannelMetrics
 )
-from src.services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 from src.services.analytics.channel_analytics import ChannelAnalytics
 
 class ContextEngine:

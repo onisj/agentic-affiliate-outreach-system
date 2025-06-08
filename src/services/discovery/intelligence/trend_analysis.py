@@ -5,19 +5,16 @@ This module implements AI-powered trend analysis for TikTok and generic web data
 to support affiliate discovery.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
-from datetime import datetime, timedelta
 import numpy as np
-from collections import Counter, defaultdict
+from collections import Counter
 from textblob import TextBlob
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 

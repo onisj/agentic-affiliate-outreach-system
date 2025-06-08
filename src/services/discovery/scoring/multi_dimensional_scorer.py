@@ -5,13 +5,10 @@ This module implements multi-dimensional scoring for affiliate prospects,
 evaluating various aspects of potential affiliates.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 import logging
-from datetime import datetime, timedelta
-import numpy as np
-from collections import Counter, defaultdict
 
-from services.monitoring import MonitoringService
+from src.services.monitoring.monitoring import MonitoringService
 
 logger = logging.getLogger(__name__)
 
