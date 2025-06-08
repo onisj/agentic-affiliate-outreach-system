@@ -14,8 +14,8 @@
 
 - **POST /prospects/**
 
-   - **Description:** Create a new prospect.
-   - **Body:**
+  - **Description:** Create a new prospect.
+  - **Body:**
 
          ```json
          {
@@ -28,43 +28,37 @@
             "consent_given": true
          }
          ```
-   - **Response:** 200 OK, prospect details.
-
+  - **Response:** 200 OK, prospect details.
 
 - **GET /prospects/**
 
-   - **Description:** List prospects.
-   - **Query Params:** skip (int, default=0), limit (int, default=100).
-   - **Response:** 200 OK, list of prospects.
-
+  - **Description:** List prospects.
+  - **Query Params:** skip (int, default=0), limit (int, default=100).
+  - **Response:** 200 OK, list of prospects.
 
 - **GET /prospects/{prospect_id}**
 
-   - **Description:** Get a prospect by ID.
-   - **Response:** 200 OK, prospect details or 404 Not Found.
-
+  - **Description:** Get a prospect by ID.
+  - **Response:** 200 OK, prospect details or 404 Not Found.
 
 - **PUT /prospects/{prospect_id}**
 
-   - **Description:** Update a prospect.
-   - **Body:** Partial prospect data.
-   - **Response:** 200 OK, updated prospect.
-
+  - **Description:** Update a prospect.
+  - **Body:** Partial prospect data.
+  - **Response:** 200 OK, updated prospect.
 
 - **POST /prospects/bulk-upload**
 
-   - **Description:** Upload prospects via CSV.
-   - **Body:** Form-data with file (CSV).
-   - **Response:** 200 OK, upload summary.
-
-
+  - **Description:** Upload prospects via CSV.
+  - **Body:** Form-data with file (CSV).
+  - **Response:** 200 OK, upload summary.
 
 ### **Templates**
 
 - **POST /templates/**
 
-   - **Description:** Create a message template.
-   - **Body:**
+  - **Description:** Create a message template.
+  - **Body:**
 
          ```json
          {
@@ -75,95 +69,79 @@
          }
          ```
 
-   - **Response:** 200 OK, template details.
-
+  - **Response:** 200 OK, template details.
 
 - **GET /templates/**
 
-   - **Description:** List templates.
-   - **Response:** 200 OK, list of templates.
-
+  - **Description:** List templates.
+  - **Response:** 200 OK, list of templates.
 
 - **GET /templates/{template_id}**
 
-   - **Description:** Get a template by ID.
-   - **Response:** 200 OK, template details.
-
+  - **Description:** Get a template by ID.
+  - **Response:** 200 OK, template details.
 
 - **PUT /templates/{template_id}**
 
-   - **Description:** Update a template.
-   - **Response:** 200 OK, updated template.
-
+  - **Description:** Update a template.
+  - **Response:** 200 OK, updated template.
 
 - **DELETE /templates/{template_id}**
 
-   - **Description:** Deactivate a template.
-   - **Response:** 200 OK, success message.
-
-
+  - **Description:** Deactivate a template.
+  - **Response:** 200 OK, success message.
 
 ### **Campaigns**
 
 - **POST /campaigns/**
 
-   - **Description:** Create a campaign.
-   - **Body:** 
+  - **Description:** Create a campaign.
+  - **Body:**
 
       ```json
-      {
-         "name": "Spring Campaign",
-         "template_id": "uuid",
-         "target_criteria": {"min_score": 70}
-      }
+         {
+            "name": "Spring Campaign",
+            "template_id": "uuid",
+            "target_criteria": {"min_score": 70}
+         }
       ```
 
-   - **Response:** 200 OK, campaign details.
-
+  - **Response:** 200 OK, campaign details.
 
 - **GET /campaigns/**
 
-   - **Description:** List campaigns.
-   - **Response:** 200 OK, list of campaigns.
-
+  - **Description:** List campaigns.
+  - **Response:** 200 OK, list of campaigns.
 
 - **GET /campaigns/{campaign_id}**
 
-   - **Description:** Get a campaign by ID.
-   - **Response:** 200 OK, campaign details.
-
+  - **Description:** Get a campaign by ID.
+  - **Response:** 200 OK, campaign details.
 
 - **POST /campaigns/{campaign_id}/start**
 
-   - **Description:** Start a campaign.
-   - **Response:** 200 OK, start confirmation.
-
-
+  - **Description:** Start a campaign.
+  - **Response:** 200 OK, start confirmation.
 
 ### **Social Outreach**
 
 - **POST /social/twitter/{prospect_id}**
 
-   - **Description:** Send a Twitter DM.
-   - **Body:** {"template_id": "uuid"}
-   - **Response:** 200 OK, message ID.
-
+  - **Description:** Send a Twitter DM.
+  - **Body:** {"template_id": "uuid"}
+  - **Response:** 200 OK, message ID.
 
 - **POST /social/linkedin/{prospect_id}**
 
-   - **Description:** Send a LinkedIn message.
-   - **Body:** {"template_id": "uuid"}
-   - **Response:** 200 OK, message ID.
-
-
+  - **Description:** Send a LinkedIn message.
+  - **Body:** {"template_id": "uuid"}
+  - **Response:** 200 OK, message ID.
 
 ### **Health**
 
 - **GET /health/**
-   - **Description:** Check system health.
-   - **Response:** 200 OK, {"status": "healthy"}
-
-
+  - **Description:** Check system health.
+  - **Response:** 200 OK, {"status": "healthy"}
 
 ### **Twitter API Authentication**
 
@@ -416,7 +394,7 @@ The API handles various Twitter API errors:
 ### Setup
 
 1. Create a LinkedIn Developer Application:
-   - Go to https://www.linkedin.com/developers/
+   - Go to <https://www.linkedin.com/developers/>
    - Click "Create App"
    - Fill in the required information
    - Note down the Client ID and Client Secret
@@ -431,11 +409,11 @@ The API handles various Twitter API errors:
 3. Update your `.env` file with LinkedIn credentials:
 
 ```env
-LINKEDIN_CLIENT_ID=your_client_id
-LINKEDIN_CLIENT_SECRET=your_client_secret
-LINKEDIN_REDIRECT_URL=http://localhost:8000/auth/linkedin/callback
-LINKEDIN_ACCESS_TOKEN=your_access_token
-LINKEDIN_TOKEN_EXPIRY=5184000  # 60 days in seconds
+   LINKEDIN_CLIENT_ID=your_client_id
+   LINKEDIN_CLIENT_SECRET=your_client_secret
+   LINKEDIN_REDIRECT_URL=http://localhost:8000/auth/linkedin/callback
+   LINKEDIN_ACCESS_TOKEN=your_access_token
+   LINKEDIN_TOKEN_EXPIRY=5184000  # 60 days in seconds
 ```
 
 ### Authentication
@@ -584,17 +562,17 @@ else:
 
 1. **List Connections**
 
-      ```python
+   ```python
       result = social_service.get_linkedin_connections(start=0, count=50)
       if result["success"]:
          connections = result["connections"]
          total = result["total"]
          print(f"Found {total} connections")
-      ```
+   ```
 
 2. **Send Connection Invitation**
 
-      ```python
+   ```python
       result = social_service.send_linkedin_invitation(
          prospect_id="123",
          urn="urn:li:person:456",
@@ -602,7 +580,7 @@ else:
       )
       if result["success"]:
          print(f"Invitation sent: {result['invitation_id']}")
-      ```
+   ```
 
 #### Message Analytics
 
@@ -726,6 +704,3 @@ else:
    - Batch requests
    - Use webhooks
    - Monitor usage
-
-
-
