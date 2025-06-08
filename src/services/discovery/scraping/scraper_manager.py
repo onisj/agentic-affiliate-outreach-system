@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from services.monitoring import MonitoringService
 from services.discovery.scraping.base_scraper import BaseScraper
 from services.discovery.scraping.proxy_manager import ProxyManager
-from services.discovery.scraping.rate_limiter import RateLimiter
+from src.services.discovery.adapters.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
