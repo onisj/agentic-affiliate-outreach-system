@@ -176,6 +176,7 @@ trio==0.30.0
 trio-websocket==0.12.2
 tweepy==4.15.0
 typer==0.16.0
+typing==3.7.4.3
 typing-inspection==0.4.1
 typing_extensions==4.13.2
 tzdata==2025.2
