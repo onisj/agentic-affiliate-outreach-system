@@ -1,4 +1,4 @@
-from app.services.cache import cache_result
+from services.cache import cache_result
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
 from database.models import MessageLog, OutreachCampaign, CampaignStatus, MessageStatus, CampaignResponse
@@ -6,7 +6,7 @@ from database.session import get_db
 from sqlalchemy import case
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.services.cache import cache
+from services.cache import cache
 import logging
 import aiohttp
 from sqlalchemy import JSON

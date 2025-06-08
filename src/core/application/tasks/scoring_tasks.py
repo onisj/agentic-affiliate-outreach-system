@@ -15,8 +15,8 @@ from app.tasks.celery_app import celery_app
 from sqlalchemy.orm import Session
 from database.models import AffiliateProspect, OutreachCampaign
 from database.session import get_db
-from app.services.scoring_service import LeadScoringService
-from app.services.visualization_service import VisualizationService
+from services.scoring_service import LeadScoringService
+from services.visualization_service import VisualizationService
 from utils.base_task import BaseTask
 
 logger = logging.getLogger(__name__)

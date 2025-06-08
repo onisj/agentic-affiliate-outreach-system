@@ -1,14 +1,14 @@
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from sqlalchemy.orm import Session
-from app.services.prospect_scoring import ProspectScoringService
+from services.prospect_scoring import ProspectScoringService
 from database.models import User, AffiliateProspect
 from database.session import get_db
-from app.services.visualization_service import VisualizationService
+from services.visualization_service import VisualizationService
 import os
 from pydantic import BaseModel
 import json
-from app.services.cache_service import cache_result, cache
+from services.cache_service import cache_result, cache
 from sqlalchemy import func, desc
 from api.dependencies import get_current_user
 import logging

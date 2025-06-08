@@ -4,9 +4,9 @@ from database.models import MessageTemplate, MessageLog, MessageType
 from database.session import get_db
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.services.cache import cache_result, cache
+from services.cache import cache_result, cache
 import logging
-from app.services.messaging import MessagingService
+from services.messaging import MessagingService
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)

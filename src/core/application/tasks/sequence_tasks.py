@@ -2,7 +2,7 @@ from app.tasks.celery_app import celery_app
 from sqlalchemy.orm import Session
 from database.models import Sequence, MessageLog, AffiliateProspect, MessageTemplate, MessageType, MessageStatus, ABTest, ABTestResult
 from database.session import get_db
-from app.services.email_service import EmailService
+from services.email_service import EmailService
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import logging

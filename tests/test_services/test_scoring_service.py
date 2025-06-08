@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from app.services.prospect_scoring import ProspectScoringService
+from services.prospect_scoring import ProspectScoringService
 from database.models import AffiliateProspect
 
 @pytest.fixture

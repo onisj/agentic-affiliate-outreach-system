@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from app.services.social_service import SocialService
+from services.social_service import SocialService
 from database.session import get_db
 from database.models import MessageLog, MessageType, MessageStatus
 from config.settings import settings

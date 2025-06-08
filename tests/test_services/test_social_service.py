@@ -1,5 +1,5 @@
 # test_social_service.py
-from app.services.social_service import SocialService
+from services.social_service import SocialService
 from database.session import SessionLocal
 from sqlalchemy.orm import Session
 import uuid

@@ -1,18 +1,25 @@
 """
-Outreach Service Package
+Outreach Module
 
-This package contains services for managing outreach campaigns and communications.
-
-Modules:
-    outreach_service: Main service for outreach management
-    email: Email communication service
-    social: Social media communication service
-    sequence: Sequence management service
+This module provides comprehensive outreach capabilities,
+including message personalization, campaign management,
+and intelligent response handling.
 """
 
-from .outreach_service import OutreachService
-from .email import EmailService
-from .social import SocialMediaService
-from .sequence import SequenceService
+from .intelligence import (
+    ContextEngine,
+    ContentGenerator,
+    CampaignIntelligence,
+    TimingEngine,
+    ResponseAnalyzer,
+    PersonalizationEngine
+)
 
-__all__ = ['OutreachService', 'EmailService', 'SocialMediaService', 'SequenceService'] 
+__all__ = [
+    'ContextEngine',
+    'ContentGenerator',
+    'CampaignIntelligence',
+    'TimingEngine',
+    'ResponseAnalyzer',
+    'PersonalizationEngine'
+] 

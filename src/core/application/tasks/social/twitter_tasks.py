@@ -15,7 +15,7 @@ from celery import Task
 from sqlalchemy.orm import Session
 
 from tasks.celery_app import celery_app
-from app.services.twitter import TwitterService
+from services.twitter import TwitterService
 from database.session import get_db
 from database.models import MessageLog, MessageType, MessageStatus
 from utils.base_task import BaseTask

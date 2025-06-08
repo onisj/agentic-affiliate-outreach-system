@@ -1,22 +1,22 @@
 """
-Affiliate Discovery AI Package
+Intelligence Module
 
-This package provides AI-powered analysis tools for affiliate discovery across multiple platforms,
-including competitive analysis, content analysis, network analysis, profile analysis, and trend analysis.
+This module implements the intelligence components for the discovery process,
+including AI agents, timing analysis, personalization, and sentiment analysis.
 """
 
-from .competitive_analysis import CompetitiveAnalysisAI
-from .content_analysis import ContentAnalysisAI
-from .network_analysis import NetworkAnalysisAI
-from .profile_analysis import ProfileAnalysisAI
-from .trend_analysis import TrendAnalysisAI
+from .ai_agent import AIAgent
+from .timing import TimingAnalyzer
+from .personalization import PersonalizationEngine
+from .sentiment import SentimentAnalyzer
+from .scoring import ProspectScorer
 
 __all__ = [
-    "CompetitiveAnalysisAI",
-    "ContentAnalysisAI",
-    "NetworkAnalysisAI",
-    "ProfileAnalysisAI",
-    "TrendAnalysisAI",
+    'AIAgent',
+    'TimingAnalyzer',
+    'PersonalizationEngine',
+    'SentimentAnalyzer',
+    'ProspectScorer'
 ]
 
 __version__ = "1.0.0"

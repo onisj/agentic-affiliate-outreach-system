@@ -14,7 +14,7 @@ from app.tasks.celery_app import celery_app
 from sqlalchemy.orm import Session
 from database.models import OutreachCampaign, MessageTemplate, ABTest, ABTestResult, MessageLog
 from database.session import get_db
-from app.services.ab_testing import ABTestingService
+from services.ab_testing import ABTestingService
 from utils.base_task import BaseTask
 import pandas as pd
 

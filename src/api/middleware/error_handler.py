@@ -5,7 +5,7 @@ from starlette.types import ASGIApp
 import time
 import uuid
 from typing import Callable, Optional
-from app.services.logging_service import LoggingService
+from services.logging_service import LoggingService
 from database.session import get_db
 from sqlalchemy.orm import Session
 from fastapi import Depends

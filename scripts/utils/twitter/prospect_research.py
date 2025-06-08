@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from utils.base_script import BaseScript
-from app.services.twitter import TwitterService
+from services.twitter import TwitterService
 
 class TwitterProspectResearcher(BaseScript):
     def __init__(self):

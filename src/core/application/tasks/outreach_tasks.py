@@ -1,5 +1,5 @@
-from app.services.email_service import EmailService
-from app.services.social_service import SocialService
+from services.email_service import EmailService
+from services.social_service import SocialService
 from database.models import AffiliateProspect, MessageTemplate, MessageLog, MessageStatus, MessageType, OutreachCampaign, CampaignStatus
 from database.models import ABTest, ABTestResult
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from uuid import uuid4
 import logging
 import random
 from app.tasks.sequence_tasks import update_ab_test_metrics
-from app.services.outreach import OutreachService
+from services.outreach import OutreachService
 
 
 logger = logging.getLogger(__name__)

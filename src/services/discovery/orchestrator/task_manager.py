@@ -16,6 +16,7 @@ from src.services.monitoring.monitoring import MonitoringService
 from services.discovery.adapters.base_scraper import BaseScraper
 from .proxy_manager import ProxyManager
 from adapters.rate_limiter import RateLimiter
+from services.discovery.models.data_models import DataObject
 
 logger = logging.getLogger(__name__)
 
@@ -154,74 +155,338 @@ class ScraperManager:
 class TaskManager:
     """Coordinates task execution and monitors progress."""
     
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
-        self.active_tasks: Dict[str, asyncio.Task] = {}
-        self.task_results: Dict[str, TaskResult] = {}
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize task manager."""
+        self.config = config or {}
+        self.monitoring = MonitoringService()
         
-    async def execute_task(self, task: Any, scraper: Any) -> TaskResult:
-        """Execute a scraping task using the appropriate scraper."""
-        start_time = datetime.utcnow()
-        task_id = task.target_url
+        # Initialize task tracking
+        self.active_tasks: Dict[str, Dict[str, Any]] = {}
+        self.completed_tasks: Dict[str, Dict[str, Any]] = {}
+        self.failed_tasks: Dict[str, Dict[str, Any]] = {}
         
+        # Initialize result storage
+        self.task_results: Dict[str, DataObject] = {}
+        
+        # Initialize task dependencies
+        self.task_dependencies: Dict[str, Set[str]] = {}
+        
+        # Initialize task timeouts
+        self.task_timeouts: Dict[str, asyncio.Task] = {}
+        
+    async def create_task(
+        self,
+        task_type: str,
+        platform: str,
+        target: str,
+        dependencies: Optional[List[str]] = None,
+        timeout: Optional[int] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Create a new task."""
         try:
-            if task.task_type == 'profile':
-                data = await scraper.scrape_profile(task.target_url)
-            elif task.task_type == 'content':
-                data = await scraper.scrape_content(task.target_url)
-            elif task.task_type == 'network':
-                data = await scraper.scrape_network(task.target_url)
-            elif task.task_type == 'engagement':
-                data = await scraper.scrape_engagement(task.target_url)
-            else:
-                raise ValueError(f"Unknown task type: {task.task_type}")
+            # Generate task ID
+            task_id = f"{platform}_{task_type}_{datetime.utcnow().timestamp()}"
+            
+            # Create task
+            task = {
+                'id': task_id,
+                'type': task_type,
+                'platform': platform,
+                'target': target,
+                'dependencies': set(dependencies or []),
+                'timeout': timeout or self.config.get('default_timeout', 300),
+                'context': context or {},
+                'status': 'created',
+                'created_at': datetime.utcnow(),
+                'progress': 0.0
+            }
+            
+            # Store task
+            self.active_tasks[task_id] = task
+            
+            # Set up dependencies
+            self.task_dependencies[task_id] = set(dependencies or [])
+            
+            # Set up timeout
+            if task['timeout']:
+                self.task_timeouts[task_id] = asyncio.create_task(
+                    self._handle_task_timeout(task_id)
+                )
                 
-            execution_time = (datetime.utcnow() - start_time).total_seconds()
-            result = TaskResult(
-                task_id=task_id,
-                status='completed',
-                data=data,
-                execution_time=execution_time
+            # Record metric
+            self.monitoring.record_metric(
+                'created_tasks',
+                1,
+                {
+                    'platform': platform,
+                    'task_type': task_type
+                }
+            )
+            
+            return task_id
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error creating task: {str(e)}",
+                error_type="task_creation_error",
+                component="task_manager",
+                context={
+                    'task_type': task_type,
+                    'platform': platform,
+                    'target': target
+                }
+            )
+            raise
+            
+    async def start_task(self, task_id: str):
+        """Start a task."""
+        try:
+            # Get task
+            task = self.active_tasks.get(task_id)
+            if not task:
+                raise ValueError(f"Task not found: {task_id}")
+                
+            # Check dependencies
+            if not await self._check_dependencies(task_id):
+                return
+                
+            # Update task status
+            task['status'] = 'running'
+            task['started_at'] = datetime.utcnow()
+            
+            # Record metric
+            self.monitoring.record_metric(
+                'started_tasks',
+                1,
+                {
+                    'platform': task['platform'],
+                    'task_type': task['type']
+                }
             )
             
         except Exception as e:
-            self.logger.error(f"Task {task_id} failed: {str(e)}")
-            result = TaskResult(
-                task_id=task_id,
-                status='failed',
-                error=str(e),
-                execution_time=(datetime.utcnow() - start_time).total_seconds()
+            self.monitoring.log_error(
+                f"Error starting task: {str(e)}",
+                error_type="task_start_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            raise
+            
+    async def complete_task(self, task_id: str, result: DataObject):
+        """Complete a task with results."""
+        try:
+            # Get task
+            task = self.active_tasks.get(task_id)
+            if not task:
+                raise ValueError(f"Task not found: {task_id}")
+                
+            # Update task status
+            task['status'] = 'completed'
+            task['completed_at'] = datetime.utcnow()
+            task['progress'] = 1.0
+            
+            # Store result
+            self.task_results[task_id] = result
+            
+            # Move to completed tasks
+            self.completed_tasks[task_id] = task
+            del self.active_tasks[task_id]
+            
+            # Cancel timeout
+            if task_id in self.task_timeouts:
+                self.task_timeouts[task_id].cancel()
+                del self.task_timeouts[task_id]
+                
+            # Record metric
+            self.monitoring.record_metric(
+                'completed_tasks',
+                1,
+                {
+                    'platform': task['platform'],
+                    'task_type': task['type']
+                }
             )
             
-        self.task_results[task_id] = result
-        return result
-    
-    def get_task_status(self, task_id: str) -> Optional[TaskResult]:
-        """Get the status of a specific task."""
-        return self.task_results.get(task_id)
-    
-    def get_active_tasks(self) -> List[str]:
-        """Get list of currently active task IDs."""
-        return list(self.active_tasks.keys())
-    
-    def cancel_task(self, task_id: str) -> bool:
-        """Cancel an active task."""
-        if task_id in self.active_tasks:
-            self.active_tasks[task_id].cancel()
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error completing task: {str(e)}",
+                error_type="task_completion_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            raise
+            
+    async def fail_task(self, task_id: str, error: str):
+        """Mark a task as failed."""
+        try:
+            # Get task
+            task = self.active_tasks.get(task_id)
+            if not task:
+                raise ValueError(f"Task not found: {task_id}")
+                
+            # Update task status
+            task['status'] = 'failed'
+            task['failed_at'] = datetime.utcnow()
+            task['error'] = error
+            
+            # Move to failed tasks
+            self.failed_tasks[task_id] = task
             del self.active_tasks[task_id]
+            
+            # Cancel timeout
+            if task_id in self.task_timeouts:
+                self.task_timeouts[task_id].cancel()
+                del self.task_timeouts[task_id]
+                
+            # Record metric
+            self.monitoring.record_metric(
+                'failed_tasks',
+                1,
+                {
+                    'platform': task['platform'],
+                    'task_type': task['type']
+                }
+            )
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error failing task: {str(e)}",
+                error_type="task_failure_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            raise
+            
+    async def update_task_progress(self, task_id: str, progress: float):
+        """Update task progress."""
+        try:
+            # Get task
+            task = self.active_tasks.get(task_id)
+            if not task:
+                raise ValueError(f"Task not found: {task_id}")
+                
+            # Update progress
+            task['progress'] = min(max(progress, 0.0), 1.0)
+            
+            # Record metric
+            self.monitoring.record_metric(
+                'task_progress',
+                task['progress'],
+                {
+                    'platform': task['platform'],
+                    'task_type': task['type']
+                }
+            )
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error updating task progress: {str(e)}",
+                error_type="progress_update_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            raise
+            
+    async def get_task_status(self, task_id: str) -> Dict[str, Any]:
+        """Get task status."""
+        try:
+            # Check active tasks
+            if task_id in self.active_tasks:
+                return self.active_tasks[task_id]
+                
+            # Check completed tasks
+            if task_id in self.completed_tasks:
+                return self.completed_tasks[task_id]
+                
+            # Check failed tasks
+            if task_id in self.failed_tasks:
+                return self.failed_tasks[task_id]
+                
+            raise ValueError(f"Task not found: {task_id}")
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error getting task status: {str(e)}",
+                error_type="status_check_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            raise
+            
+    async def get_task_result(self, task_id: str) -> Optional[DataObject]:
+        """Get task result."""
+        try:
+            return self.task_results.get(task_id)
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error getting task result: {str(e)}",
+                error_type="result_retrieval_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            raise
+            
+    async def _check_dependencies(self, task_id: str) -> bool:
+        """Check if task dependencies are satisfied."""
+        try:
+            # Get dependencies
+            dependencies = self.task_dependencies.get(task_id, set())
+            
+            # Check each dependency
+            for dep_id in dependencies:
+                # Get dependency status
+                dep_status = await self.get_task_status(dep_id)
+                
+                # Check if dependency is completed
+                if dep_status['status'] != 'completed':
+                    return False
+                    
             return True
-        return False
-    
-    async def cleanup(self) -> None:
-        """Clean up completed tasks and their results."""
-        current_time = datetime.utcnow()
-        retention_period = self.config.get('result_retention_hours', 24)
-        
-        tasks_to_remove = [
-            task_id for task_id, result in self.task_results.items()
-            if (current_time - datetime.fromtimestamp(result.execution_time)).total_seconds() > retention_period * 3600
-        ]
-        
-        for task_id in tasks_to_remove:
-            del self.task_results[task_id] 
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error checking dependencies: {str(e)}",
+                error_type="dependency_check_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            return False
+            
+    async def _handle_task_timeout(self, task_id: str):
+        """Handle task timeout."""
+        try:
+            # Get task
+            task = self.active_tasks.get(task_id)
+            if not task:
+                return
+                
+            # Wait for timeout
+            await asyncio.sleep(task['timeout'])
+            
+            # Check if task is still active
+            if task_id in self.active_tasks:
+                # Fail task
+                await self.fail_task(
+                    task_id,
+                    f"Task timed out after {task['timeout']} seconds"
+                )
+                
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error handling task timeout: {str(e)}",
+                error_type="timeout_handling_error",
+                component="task_manager",
+                context={'task_id': task_id}
+            )
+            
+    def get_task_summary(self) -> Dict[str, Any]:
+        """Get summary of all tasks."""
+        return {
+            'active_tasks': len(self.active_tasks),
+            'completed_tasks': len(self.completed_tasks),
+            'failed_tasks': len(self.failed_tasks),
+            'total_tasks': len(self.active_tasks) + len(self.completed_tasks) + len(self.failed_tasks)
+        } 

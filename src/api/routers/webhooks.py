@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, HttpUrl, Field
 from database.models import WebhookEventType, Webhook, WebhookDelivery, MessageStatus, ProspectStatus, CampaignStatus
-from app.services.webhook_service import (
+from services.webhook_service import (
     WebhookService, EVENT_SCHEMAS, LoadTestConfig, LoadTestResult,
     ConcurrentTestConfig, ConcurrentTestResult, StressTestConfig,
     StressTestResult, SpikeTestConfig, SpikeTestResult

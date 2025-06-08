@@ -1,289 +1,276 @@
 """
 Smart Scheduler
 
-This module implements intelligent scheduling of scraping tasks based on
-platform-specific patterns, rate limits, and resource availability.
+This module implements intelligent scheduling for scraping tasks across platforms,
+considering rate limits, priorities, and resource constraints.
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import asyncio
-import logging
-from dataclasses import dataclass
-from enum import Enum
-
-from src.services.monitoring.monitoring import MonitoringService
-
-logger = logging.getLogger(__name__)
-
-class TaskPriority(Enum):
-    """Priority levels for scraping tasks."""
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-    CRITICAL = 4
-
-@dataclass
-class ScrapingTask:
-    """Represents a scheduled scraping task."""
-    platform: str
-    target_url: str
-    task_type: str  # 'profile', 'content', 'network', 'engagement'
-    priority: int
-    scheduled_time: datetime
-    retry_count: int = 0
-    max_retries: int = 3
+from services.monitoring import MonitoringService
+from services.discovery.adapters.rate_limiter import RateLimiter
 
 class SmartScheduler:
     """Manages and schedules scraping tasks across platforms."""
     
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize smart scheduler."""
+        self.config = config or {}
         self.monitoring = MonitoringService()
-        self.task_queue: List[ScrapingTask] = []
-        self.running_tasks: Dict[str, ScrapingTask] = {}
-        self.platform_patterns: Dict[str, Dict[str, Any]] = {}
-        self.resource_limits: Dict[str, int] = {}
-        self.active_tasks: Dict[str, asyncio.Task] = {}
         
-    def schedule_task(self, task: ScrapingTask) -> None:
-        """Add a new task to the queue."""
-        self.task_queue.append(task)
-        self.task_queue.sort(key=lambda x: (x.priority, x.scheduled_time))
+        # Initialize scheduling parameters
+        self.max_concurrent_tasks = self.config.get('max_concurrent_tasks', 5)
+        self.task_timeout = self.config.get('task_timeout', 300)  # 5 minutes
+        self.retry_attempts = self.config.get('retry_attempts', 3)
+        self.retry_delay = self.config.get('retry_delay', 60)  # 1 minute
         
-    def get_next_task(self) -> Optional[ScrapingTask]:
-        """Get the next task to execute."""
-        if not self.task_queue:
-            return None
-            
-        current_time = datetime.utcnow()
-        for task in self.task_queue:
-            if task.scheduled_time <= current_time:
-                self.task_queue.remove(task)
-                return task
-        return None
-    
-    def reschedule_task(self, task: ScrapingTask) -> None:
-        """Reschedule a failed task with exponential backoff."""
-        if task.retry_count >= task.max_retries:
-            self.logger.error(f"Task {task.target_url} exceeded max retries")
-            return
-            
-        delay = 2 ** task.retry_count  # Exponential backoff
-        task.retry_count += 1
-        task.scheduled_time = datetime.utcnow() + timedelta(minutes=delay)
-        self.schedule_task(task)
-    
-    def update_task_status(self, task_id: str, status: str) -> None:
-        """Update the status of a running task."""
-        if task_id in self.running_tasks:
-            task = self.running_tasks[task_id]
-            if status == 'completed':
-                del self.running_tasks[task_id]
-            elif status == 'failed':
-                self.reschedule_task(task)
-                del self.running_tasks[task_id]
-    
-    async def run(self) -> None:
-        """Main scheduler loop."""
-        while True:
-            task = self.get_next_task()
-            if task:
-                self.running_tasks[task.target_url] = task
-                # Task execution would be handled by the task manager
-                
-            await asyncio.sleep(1)  # Prevent CPU spinning
-            
-    async def start_scheduling(self):
-        """Start the scheduling loop."""
+        # Initialize rate limiters
+        self.rate_limiters = {
+            'linkedin': RateLimiter(self.config.get('linkedin_rate_limits')),
+            'twitter': RateLimiter(self.config.get('twitter_rate_limits')),
+            'youtube': RateLimiter(self.config.get('youtube_rate_limits')),
+            'tiktok': RateLimiter(self.config.get('tiktok_rate_limits')),
+            'instagram': RateLimiter(self.config.get('instagram_rate_limits')),
+            'reddit': RateLimiter(self.config.get('reddit_rate_limits'))
+        }
+        
+        # Initialize task queue
+        self.task_queue = asyncio.Queue()
+        self.running_tasks = set()
+        
+    async def schedule_task(
+        self,
+        task_type: str,
+        platform: str,
+        target: str,
+        priority: int = 1,
+        context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Schedule a new scraping task."""
         try:
-            while True:
-                # Process due tasks
-                await self._process_due_tasks()
-                
-                # Update platform patterns
-                await self._update_platform_patterns()
-                
-                # Check resource limits
-                await self._check_resource_limits()
-                
-                # Wait before next iteration
-                await asyncio.sleep(self.config.get('scheduler_interval', 60))
-                
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error in scheduling loop: {str(e)}"
-            )
-            raise
+            # Generate task ID
+            task_id = f"{platform}_{task_type}_{datetime.utcnow().timestamp()}"
             
-    async def cancel_task(self, task_id: str):
-        """Cancel a scheduled task."""
-        try:
-            task = next((t for t in self.task_queue if t.target_url == task_id), None)
-            if task:
-                self.task_queue.remove(task)
-                logger.info(f"Cancelled task for {task_id}")
-                
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error cancelling task: {str(e)}",
-                context={"task_id": task_id}
-            )
-            raise
-            
-    async def get_schedule_status(self) -> Dict[str, Any]:
-        """Get current scheduling status."""
-        try:
-            return {
-                "pending_tasks": len(self.task_queue),
-                "active_tasks": len(self.running_tasks),
-                "platform_patterns": self.platform_patterns,
-                "resource_limits": self.resource_limits
+            # Create task
+            task = {
+                'id': task_id,
+                'type': task_type,
+                'platform': platform,
+                'target': target,
+                'priority': priority,
+                'context': context or {},
+                'status': 'pending',
+                'created_at': datetime.utcnow(),
+                'attempts': 0
             }
             
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error getting schedule status: {str(e)}"
+            # Add to queue
+            await self.task_queue.put(task)
+            
+            # Record metric
+            self.monitoring.record_metric(
+                'scheduled_tasks',
+                1,
+                {
+                    'platform': platform,
+                    'task_type': task_type,
+                    'priority': str(priority)
+                }
             )
-            raise
             
-    async def _calculate_optimal_time(
-        self,
-        platform: str,
-        priority: TaskPriority
-    ) -> datetime:
-        """Calculate optimal execution time for a task."""
-        try:
-            now = datetime.now()
-            
-            # Get platform-specific patterns
-            patterns = self.platform_patterns.get(platform, {})
-            
-            # Calculate base delay based on priority
-            base_delay = {
-                TaskPriority.LOW: 3600,  # 1 hour
-                TaskPriority.MEDIUM: 1800,  # 30 minutes
-                TaskPriority.HIGH: 300,  # 5 minutes
-                TaskPriority.CRITICAL: 60  # 1 minute
-            }[priority]
-            
-            # Adjust for platform patterns
-            if patterns:
-                # Consider time of day
-                hour = now.hour
-                if hour in patterns.get('peak_hours', []):
-                    base_delay *= 1.5
-                elif hour in patterns.get('off_hours', []):
-                    base_delay *= 0.5
-                    
-                # Consider day of week
-                weekday = now.weekday()
-                if weekday in patterns.get('busy_days', []):
-                    base_delay *= 1.2
-                    
-            return now + timedelta(seconds=base_delay)
+            return task_id
             
         except Exception as e:
             self.monitoring.log_error(
-                f"Error calculating optimal time: {str(e)}",
-                context={"platform": platform}
+                f"Error scheduling task: {str(e)}",
+                error_type="scheduling_error",
+                component="smart_scheduler",
+                context={
+                    'task_type': task_type,
+                    'platform': platform,
+                    'target': target
+                }
             )
             raise
             
-    async def _process_due_tasks(self):
-        """Process tasks that are due for execution."""
+    async def start(self):
+        """Start the scheduler."""
         try:
-            now = datetime.now()
-            due_tasks = [
-                task for task in self.task_queue
-                if task.scheduled_time <= now
-            ]
+            # Start task processor
+            asyncio.create_task(self._process_tasks())
             
-            for task in due_tasks:
-                if await self._can_execute_task(task):
-                    await self._execute_task(task)
+            # Start rate limit monitor
+            asyncio.create_task(self._monitor_rate_limits())
+            
+            self.monitoring.log_info(
+                "Smart scheduler started",
+                component="smart_scheduler"
+            )
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error starting scheduler: {str(e)}",
+                error_type="scheduler_start_error",
+                component="smart_scheduler"
+            )
+            raise
+            
+    async def stop(self):
+        """Stop the scheduler."""
+        try:
+            # Cancel all running tasks
+            for task in self.running_tasks:
+                task.cancel()
+                
+            # Clear queue
+            while not self.task_queue.empty():
+                self.task_queue.get_nowait()
+                
+            self.monitoring.log_info(
+                "Smart scheduler stopped",
+                component="smart_scheduler"
+            )
+            
+        except Exception as e:
+            self.monitoring.log_error(
+                f"Error stopping scheduler: {str(e)}",
+                error_type="scheduler_stop_error",
+                component="smart_scheduler"
+            )
+            raise
+            
+    async def _process_tasks(self):
+        """Process tasks from the queue."""
+        while True:
+            try:
+                # Get next task
+                task = await self.task_queue.get()
+                
+                # Check if we can run more tasks
+                if len(self.running_tasks) >= self.max_concurrent_tasks:
+                    # Put task back in queue
+                    await self.task_queue.put(task)
+                    await asyncio.sleep(1)
+                    continue
+                    
+                # Create task coroutine
+                task_coro = self._execute_task(task)
+                
+                # Add to running tasks
+                running_task = asyncio.create_task(task_coro)
+                self.running_tasks.add(running_task)
+                
+                # Remove from running tasks when done
+                running_task.add_done_callback(self.running_tasks.discard)
+                
+            except Exception as e:
+                self.monitoring.log_error(
+                    f"Error processing task: {str(e)}",
+                    error_type="task_processing_error",
+                    component="smart_scheduler"
+                )
+                await asyncio.sleep(1)
+                
+    async def _execute_task(self, task: Dict[str, Any]):
+        """Execute a scheduled task."""
+        try:
+            # Update task status
+            task['status'] = 'running'
+            task['started_at'] = datetime.utcnow()
+            
+            # Get rate limiter
+            rate_limiter = self.rate_limiters.get(task['platform'])
+            if not rate_limiter:
+                raise ValueError(f"No rate limiter for platform: {task['platform']}")
+                
+            # Acquire rate limit permission
+            await rate_limiter.acquire()
+            
+            try:
+                # Execute task
+                result = await self._run_task(task)
+                
+                # Update task status
+                task['status'] = 'completed'
+                task['completed_at'] = datetime.utcnow()
+                task['result'] = result
+                
+            except Exception as e:
+                # Handle task failure
+                task['status'] = 'failed'
+                task['error'] = str(e)
+                task['attempts'] += 1
+                
+                if task['attempts'] < self.retry_attempts:
+                    # Reschedule task
+                    await asyncio.sleep(self.retry_delay)
+                    await self.task_queue.put(task)
                 else:
-                    # Reschedule with backoff
-                    task.scheduled_time = now + timedelta(
-                        minutes=2 ** task.retry_count
+                    # Task failed permanently
+                    self.monitoring.log_error(
+                        f"Task failed permanently: {str(e)}",
+                        error_type="task_failure",
+                        component="smart_scheduler",
+                        context=task
                     )
-                    task.retry_count += 1
                     
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error processing due tasks: {str(e)}"
-            )
-            raise
-            
-    async def _update_platform_patterns(self):
-        """Update platform-specific patterns based on historical data."""
-        try:
-            # This would typically involve analyzing historical scraping data
-            # to identify optimal times and patterns
-            pass
-            
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error updating platform patterns: {str(e)}"
-            )
-            raise
-            
-    async def _check_resource_limits(self):
-        """Check and update resource usage limits."""
-        try:
-            # This would typically involve checking system resources
-            # and adjusting limits accordingly
-            pass
-            
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error checking resource limits: {str(e)}"
-            )
-            raise
-            
-    async def _can_execute_task(self, task: ScrapingTask) -> bool:
-        """Check if a task can be executed."""
-        try:
-            # Check retry limit
-            if task.retry_count >= task.max_retries:
-                return False
+            finally:
+                # Release rate limit
+                rate_limiter.release()
                 
-            # Check resource limits
-            if len(self.running_tasks) >= self.resource_limits.get('max_concurrent_tasks', 5):
-                return False
-                
-            return True
-            
-        except Exception as e:
-            self.monitoring.log_error(
-                f"Error checking task execution: {str(e)}",
-                context={"platform": task.platform}
-            )
-            raise
-            
-    async def _execute_task(self, task: ScrapingTask):
-        """Execute a scraping task."""
-        try:
-            # Create and start task
-            async def task_wrapper():
-                try:
-                    # Execute scraping
-                    # This would typically call the appropriate scraper
-                    pass
-                finally:
-                    # Clean up
-                    if task.target_url in self.running_tasks:
-                        del self.running_tasks[task.target_url]
-                        
-            # Start task
-            self.active_tasks[task.target_url] = asyncio.create_task(task_wrapper())
-            
-            # Remove from queue
-            self.task_queue.remove(task)
-            
         except Exception as e:
             self.monitoring.log_error(
                 f"Error executing task: {str(e)}",
-                context={"platform": task.platform}
+                error_type="task_execution_error",
+                component="smart_scheduler",
+                context=task
             )
-            raise 
+            raise
+            
+    async def _run_task(self, task: Dict[str, Any]) -> Any:
+        """Run the actual task."""
+        # Implementation depends on task type and platform
+        pass
+        
+    async def _monitor_rate_limits(self):
+        """Monitor rate limits for all platforms."""
+        while True:
+            try:
+                for platform, rate_limiter in self.rate_limiters.items():
+                    # Get rate limit status
+                    status = rate_limiter.get_status()
+                    
+                    # Record metrics
+                    self.monitoring.record_metric(
+                        'rate_limit_remaining',
+                        status['remaining'],
+                        {'platform': platform}
+                    )
+                    
+                    self.monitoring.record_metric(
+                        'rate_limit_reset',
+                        status['reset_time'].timestamp(),
+                        {'platform': platform}
+                    )
+                    
+                await asyncio.sleep(60)  # Check every minute
+                
+            except Exception as e:
+                self.monitoring.log_error(
+                    f"Error monitoring rate limits: {str(e)}",
+                    error_type="rate_limit_monitoring_error",
+                    component="smart_scheduler"
+                )
+                await asyncio.sleep(60)
+                
+    def get_queue_status(self) -> Dict[str, Any]:
+        """Get current queue status."""
+        return {
+            'queue_size': self.task_queue.qsize(),
+            'running_tasks': len(self.running_tasks),
+            'rate_limits': {
+                platform: limiter.get_status()
+                for platform, limiter in self.rate_limiters.items()
+            }
+        } 

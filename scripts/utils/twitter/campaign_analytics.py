@@ -18,7 +18,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from utils.base_script import BaseScript
-from app.services.twitter import TwitterService
+from services.twitter import TwitterService
 from database.session import get_db
 from database.models import MessageLog, MessageType, MessageStatus
 

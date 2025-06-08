@@ -1,16 +1,64 @@
 """
-Discovery Service Package
+Discovery Module
 
-This package contains services for discovering and qualifying prospects.
-
-Modules:
-    discovery_service: Main service for prospect discovery
-    qualification: Prospect qualification logic
-    enrichment: Prospect data enrichment
+This module provides comprehensive prospect discovery capabilities,
+including intelligence analysis, data scraping, pipeline processing,
+and orchestration of discovery tasks.
 """
 
-from .discovery_service import DiscoveryService
-from .qualification import ProspectQualifier
-from .enrichment import ProspectEnricher
+from .intelligence import (
+    AIAgent,
+    TimingAnalyzer,
+    PersonalizationEngine,
+    SentimentAnalyzer,
+    ProspectScorer
+)
+from .scrapers import (
+    BaseScraper,
+    LinkedInScraper,
+    TwitterScraper,
+    YouTubeScraper,
+    TikTokScraper,
+    InstagramScraper,
+    RedditScraper,
+    WebScraper
+)
+from .pipeline import (
+    DataCleaner,
+    DataValidator,
+    DataEnricher,
+    ProspectScorer
+)
+from .orchestrator import (
+    SmartScheduler,
+    TaskManager
+)
 
-__all__ = ['DiscoveryService', 'ProspectQualifier', 'ProspectEnricher'] 
+__all__ = [
+    # Intelligence
+    'AIAgent',
+    'TimingAnalyzer',
+    'PersonalizationEngine',
+    'SentimentAnalyzer',
+    'ProspectScorer',
+    
+    # Scrapers
+    'BaseScraper',
+    'LinkedInScraper',
+    'TwitterScraper',
+    'YouTubeScraper',
+    'TikTokScraper',
+    'InstagramScraper',
+    'RedditScraper',
+    'WebScraper',
+    
+    # Pipeline
+    'DataCleaner',
+    'DataValidator',
+    'DataEnricher',
+    'ProspectScorer',
+    
+    # Orchestrator
+    'SmartScheduler',
+    'TaskManager'
+] 

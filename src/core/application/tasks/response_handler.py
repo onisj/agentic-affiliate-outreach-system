@@ -1,4 +1,10 @@
-from app.services.response_tracking import ResponseTrackingService
+"""
+Response Handler Task
+
+This module implements the response handling task for processing prospect responses.
+"""
+
+from services.outreach.response_tracking import ResponseTrackingService
 
 def handle_prospect_response(message_id: str, response_type: str, content: str, db):
     response_service = ResponseTrackingService(db)

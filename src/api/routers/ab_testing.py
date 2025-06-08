@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-from app.services.ab_testing import ABTestingService
+from services.ab_testing import ABTestingService
 from database.session import get_db
 from sqlalchemy.orm import Session
 

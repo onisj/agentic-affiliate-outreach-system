@@ -3,7 +3,7 @@ from typing import Dict, Any
 import re
 import requests
 from bs4 import BeautifulSoup
-from app.services.validator import DataValidator
+from services.validator import DataValidator
 
 class LeadScoringService:
     def __init__(self):

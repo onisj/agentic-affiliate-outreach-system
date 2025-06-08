@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from database.session import get_db
-from app.services.monitoring import MonitoringService, AlertConfig
+from services.monitoring import MonitoringService, AlertConfig
 from database.models import Alert, AlertType, AlertSeverity, SystemMetric, WebhookMetric
 from pydantic import BaseModel, HttpUrl, EmailStr, ConfigDict
 from typing import Optional

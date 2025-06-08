@@ -22,16 +22,16 @@ from database.models import (
     AffiliateProspect,
     ProspectStatus
 )
-from app.services.email_service import EmailService
-from app.services.linkedin import LinkedInService
-from app.services.twitter import TwitterService
+from services.email_service import EmailService
+from services.linkedin import LinkedInService
+from services.twitter import TwitterService
 import asyncio
 from jinja2 import Template
 import requests
 import uuid
 from tenacity import retry, stop_after_attempt, wait_exponential
 from config.settings import settings
-from app.services.outreach import OutreachService
+from services.outreach import OutreachService
 
 logger = logging.getLogger(__name__)
 

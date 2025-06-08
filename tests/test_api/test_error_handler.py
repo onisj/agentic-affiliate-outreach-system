@@ -2,7 +2,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from api.middleware.error_handler import ErrorHandlerMiddleware, RateLimitMiddleware
-from app.services.logging_service import LoggingService
+from services.logging_service import LoggingService
 from sqlalchemy.exc import SQLAlchemyError
 
 @pytest.fixture

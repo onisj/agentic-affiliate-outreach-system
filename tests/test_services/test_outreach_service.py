@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from app.services.outreach import OutreachService
+from services.outreach import OutreachService
 from tests.utils import TestData, mock_services, redis_client, db_session
 
 @pytest.mark.unit

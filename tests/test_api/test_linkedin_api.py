@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from api.main import app
 from database.models import MessageLog, MessageType, MessageStatus
-from app.services.social_service import SocialService
+from services.social_service import SocialService
 from tests.utils import mock_linkedin_api, mock_linkedin_message, create_test_prospect, create_test_template
 
 @pytest.fixture

@@ -1,4 +1,4 @@
-from app.services.validator import DataValidator
+from services.validator import DataValidator
 from unittest.mock import patch, MagicMock
 
 def test_validate_email_success():

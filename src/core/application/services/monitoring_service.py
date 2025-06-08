@@ -32,7 +32,7 @@ from pythonjsonlogger import json
 from contextvars import ContextVar
 import uuid
 import sys
-from app.services.monitoring import MonitoringService, AlertType, AlertSeverity, AlertConfig
+from services.monitoring import MonitoringService, AlertType, AlertSeverity, AlertConfig
 
 # Context variables for request tracking
 request_id = ContextVar('request_id', default=None)

@@ -19,14 +19,14 @@ from database.models import (
     AffiliateProspect, OutreachCampaign, MessageTemplate,
     MessageStatus, MessageResponse
 )
-from app.services.webhook_service import WebhookService
-from app.services.email_service import EmailService
-from app.services.social_service import SocialService
+from services.webhook_service import WebhookService
+from services.email_service import EmailService
+from services.social_service import SocialService
 from textblob import TextBlob
 import json
 import asyncio
 from pydantic import BaseModel, ConfigDict
-from app.services.response_tracking import ResponseTrackingService
+from services.response_tracking import ResponseTrackingService
 
 logger = logging.getLogger(__name__)
 

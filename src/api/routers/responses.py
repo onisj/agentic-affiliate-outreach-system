@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from database.session import get_db
-from app.services.response_tracking import ResponseTrackingService
+from services.response_tracking import ResponseTrackingService
 from pydantic import BaseModel
 import logging
 

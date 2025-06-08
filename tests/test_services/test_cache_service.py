@@ -1,7 +1,7 @@
 import pytest
 import redis
-from app.services.cache_service import CacheService, cached
-from app.services.logging_service import LoggingService
+from services.cache_service import CacheService, cached
+from services.logging_service import LoggingService
 import asyncio
 from datetime import datetime, timedelta
 import logging

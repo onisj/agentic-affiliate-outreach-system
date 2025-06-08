@@ -1,17 +1,76 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 15s  # How often to scrape metrics
+  evaluation_interval: 15s  # How often to evaluate rules
+  scrape_timeout: 10s  # Timeout for scraping
 
 rule_files:
   - "prometheus_rules.yml"
 
 scrape_configs:
+  # FastAPI application
   - job_name: 'affiliate_outreach'
     static_configs:
-      - targets: ['api:8000']
+      - targets: ['localhost:8000']  # FastAPI default port
+        labels:
+          app: 'affiliate-outreach'
+          environment: 'development'
     metrics_path: '/metrics'
     scheme: 'http'
 
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['localhost:9121']  # Redis Exporter port
+        labels:
+          app: 'redis'
+          environment: 'development'
+
+  # Celery (via Flower or custom metrics)
+  - job_name: 'celery'
+    static_configs:
+      - targets: ['localhost:5555']  # Flower default port
+        labels:
+          app: 'celery'
+          environment: 'development'
+
+  # PostgreSQL (optional, if exporter is set up)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['localhost:9187']  # PostgreSQL Exporter port
+        labels:
+          app: 'postgresql'
+          environment: 'development'
+
+  # Prometheus itself
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090'] 
+      - targets: ['localhost:9090']  # Prometheus default port
+        labels:
+          app: 'prometheus'
+          environment: 'development'
+
+  # Streamlit (optional, if metrics exposed)
+  - job_name: 'streamlit'
+    static_configs:
+      - targets: ['localhost:8501']  # Streamlit default port
+        labels:
+          app: 'streamlit'
+          environment: 'development'
+
+  # Gradio (optional, if metrics exposed)
+  - job_name: 'gradio'
+    static_configs:
+      - targets: ['localhost:7860']  # Gradio default port
+        labels:
+          app: 'gradio'
+          environment: 'development'
+
+  # Grafana (optional, if running)
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['localhost:3000']  # Grafana default port
+        labels:
+          app: 'grafana'
+          environment: 'development'
+
+

@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from utils.base_script import BaseScript
-from app.services.social_service import SocialService
+from services.social_service import SocialService
 
 class ProspectResearcher(BaseScript):
     def __init__(self):

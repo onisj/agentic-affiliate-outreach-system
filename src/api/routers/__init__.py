@@ -10,7 +10,7 @@ Modules:
     ab_testing: A/B testing endpoints
     analytics: Analytics endpoints
 """
-
+from .platform_router import PlatformRouter
 from .ab_testing import *
 from .affiliate_discovery import *
 from .campaigns import *
@@ -21,3 +21,4 @@ from .responses import *
 from .templates import *
 from .webhooks import *
 
+__all__ = ['PlatformRouter']

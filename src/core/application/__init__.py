@@ -6,7 +6,7 @@ This package contains the core application components:
 - Tasks: Background processing and scheduled jobs
 """
 
-from app.services import (
+from services import (
     MonitoringService,
     SocialService,
     OutreachService,

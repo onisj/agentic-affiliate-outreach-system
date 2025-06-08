@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from database.session import get_db
-from app.services.affiliate_discovery import AffiliateDiscoveryService
+from services.affiliate_discovery import AffiliateDiscoveryService
 from database.models import AffiliateStatus
 from pydantic import BaseModel
 from datetime import datetime

@@ -27,7 +27,7 @@ from jinja2 import Environment, FileSystemLoader, Template
 from config.settings import settings
 from database.session import get_db
 from database.models import MessageLog, MessageStatus, MessageType
-from app.services.validator import DataValidator
+from services.validator import DataValidator
 
 logger = logging.getLogger(__name__)
 
