@@ -1,0 +1,275 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black flake8 isort mypy
+        pip install -r requirements.txt
+    
+    - name: Run Black (code formatting)
+      run: black --check --diff src/ tests/
+    
+    - name: Run isort (import sorting)
+      run: isort --check-only --diff src/ tests/
+    
+    - name: Run Flake8 (linting)
+      run: flake8 src/ tests/
+    
+    - name: Run MyPy (type checking)
+      run: mypy src/
+
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_affiliate_outreach
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+    
+    - name: Run tests with coverage
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_affiliate_outreach
+        REDIS_URL: redis://localhost:6379/0
+        ENVIRONMENT: test
+      run: |
+        pytest tests/ --cov=src --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: backend
+        name: backend-coverage
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'src/web/package-lock.json'
+    
+    - name: Install frontend dependencies
+      working-directory: src/web
+      run: npm ci
+    
+    - name: Run frontend linting
+      working-directory: src/web
+      run: npm run lint
+    
+    - name: Run frontend type checking
+      working-directory: src/web
+      run: npm run type-check
+    
+    - name: Run frontend tests
+      working-directory: src/web
+      run: npm run test:coverage
+    
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./src/web/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  build-and-validate:
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, test-backend, test-frontend]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker images
+      run: |
+        docker-compose -f deployment/docker/docker-compose.yml build
+    
+    - name: Validate Docker images
+      run: |
+        docker-compose -f deployment/docker/docker-compose.yml config
+    
+    - name: Run integration tests
+      run: |
+        docker-compose -f deployment/docker/docker-compose.yml up -d
+        sleep 30
+        pytest tests/integration/ --verbose
+        docker-compose -f deployment/docker/docker-compose.yml down
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install safety
+      run: pip install safety
+    
+    - name: Check Python dependencies for vulnerabilities
+      run: safety check -r requirements.txt
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    
+    - name: Check Node.js dependencies for vulnerabilities
+      working-directory: src/web
+      run: npm audit --audit-level=moderate
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security-scan]
+    if: always()
+    steps:
+      - name: Multi-platform CI notifications
+        if: always()
+        run: |
+          # Determine overall CI status
+          BACKEND_STATUS="${{ needs.test-backend.result }}"
+          FRONTEND_STATUS="${{ needs.test-frontend.result }}"
+          SECURITY_STATUS="${{ needs.security-scan.result }}"
+          
+          if [[ "$BACKEND_STATUS" == "success" && "$FRONTEND_STATUS" == "success" && "$SECURITY_STATUS" == "success" ]]; then
+            STATUS_EMOJI="✅"
+            STATUS_TEXT="All CI checks passed"
+            STATUS_COLOR="3066993"
+            DISCORD_COLOR="3066993"
+            OVERALL_STATUS="success"
+          else
+            STATUS_EMOJI="❌"
+            STATUS_TEXT="CI checks failed"
+            STATUS_COLOR="15158332"
+            DISCORD_COLOR="15158332"
+            OVERALL_STATUS="failure"
+          fi
+          
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Create detailed status report
+          BACKEND_ICON=$([ "$BACKEND_STATUS" == "success" ] && echo "✅" || echo "❌")
+          FRONTEND_ICON=$([ "$FRONTEND_STATUS" == "success" ] && echo "✅" || echo "❌")
+          SECURITY_ICON=$([ "$SECURITY_STATUS" == "success" ] && echo "✅" || echo "❌")
+          
+          # Discord notification with detailed CI results
+          if [[ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]]; then
+            curl -H "Content-Type: application/json" \
+                 -d "{
+                   \"embeds\": [{
+                     \"title\": \"${STATUS_EMOJI} CI Pipeline Results\",
+                     \"description\": \"${STATUS_TEXT}\",
+                     \"color\": ${DISCORD_COLOR},
+                     \"fields\": [
+                       {\"name\": \"Backend Tests\", \"value\": \"${BACKEND_ICON} ${BACKEND_STATUS}\", \"inline\": true},
+                       {\"name\": \"Frontend Tests\", \"value\": \"${FRONTEND_ICON} ${FRONTEND_STATUS}\", \"inline\": true},
+                       {\"name\": \"Security Scan\", \"value\": \"${SECURITY_ICON} ${SECURITY_STATUS}\", \"inline\": true},
+                       {\"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true},
+                       {\"name\": \"Commit\", \"value\": \"${{ github.sha }}\", \"inline\": true},
+                       {\"name\": \"Actor\", \"value\": \"${{ github.actor }}\", \"inline\": true}
+                     ],
+                     \"timestamp\": \"${TIMESTAMP}\",
+                     \"footer\": {\"text\": \"Affiliate Outreach System CI\"}
+                   }]
+                 }" \
+                 "${{ secrets.DISCORD_WEBHOOK_URL }}"
+          fi
+          
+          # Telegram notification for development team
+          if [[ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" && -n "${{ secrets.TELEGRAM_DEV_CHAT_ID }}" ]]; then
+            curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+                 -d "chat_id=${{ secrets.TELEGRAM_DEV_CHAT_ID }}" \
+                 -d "text=${STATUS_EMOJI} *CI Pipeline ${STATUS_TEXT}*%0A%0A${BACKEND_ICON} Backend: ${BACKEND_STATUS}%0A${FRONTEND_ICON} Frontend: ${FRONTEND_STATUS}%0A${SECURITY_ICON} Security: ${SECURITY_STATUS}%0A%0A🌿 Branch: ${{ github.ref_name }}%0A👤 Actor: ${{ github.actor }}" \
+                 -d "parse_mode=Markdown" \
+                 -d 'reply_markup={"inline_keyboard":[[{"text":"View Details","url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]]}'
+          fi
+          
+          # Reddit post for successful CI on main branch (community engagement)
+          if [[ "$OVERALL_STATUS" == "success" && "${{ github.ref_name }}" == "main" && -n "${{ secrets.REDDIT_ACCESS_TOKEN }}" ]]; then
+            curl -X POST "https://oauth.reddit.com/api/submit" \
+                 -H "Authorization: Bearer ${{ secrets.REDDIT_ACCESS_TOKEN }}" \
+                 -H "User-Agent: AffiliateOutreachBot/1.0" \
+                 -d "api_type=json" \
+                 -d "kind=self" \
+                 -d "sr=programming" \
+                 -d "title=✅ Our affiliate outreach automation system just passed all CI checks!" \
+                 -d "text=Another successful build of our open-source affiliate marketing automation platform. All tests green, security scans passed! 🚀 #OpenSource #Automation #CI"
+          fi
+          
+          # Slack notification (keeping original for compatibility)
+          if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+                 --data "{
+                   \"text\": \"${STATUS_EMOJI} ${STATUS_TEXT}!\",
+                   \"attachments\": [{
+                     \"color\": \"${STATUS_COLOR}\",
+                     \"fields\": [
+                       {\"title\": \"Backend Tests\", \"value\": \"${BACKEND_ICON} ${BACKEND_STATUS}\", \"short\": true},
+                       {\"title\": \"Frontend Tests\", \"value\": \"${FRONTEND_ICON} ${FRONTEND_STATUS}\", \"short\": true},
+                       {\"title\": \"Security Scan\", \"value\": \"${SECURITY_ICON} ${SECURITY_STATUS}\", \"short\": true},
+                       {\"title\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"short\": true}
+                     ]
+                   }]
+                 }" \
+                 "${{ secrets.SLACK_WEBHOOK_URL }}"
+          fi
