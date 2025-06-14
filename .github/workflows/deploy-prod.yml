@@ -1,0 +1,229 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+        default: 'latest'
+
+env:
+  PYTHON_VERSION: '3.13'
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  security-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security scan
+        uses: github/super-linter@v5
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    needs: security-check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Run Python tests
+        run: |
+          pytest tests/ --cov=src/ --cov-report=xml --cov-report=html
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [security-check, build-and-test]
+    environment:
+      name: production
+      url: https://affiliate-outreach.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: affiliate-outreach-prod
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f deployment/docker/Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster affiliate-outreach-prod --service affiliate-outreach-api --force-new-deployment
+          aws ecs wait services-stable --cluster affiliate-outreach-prod --services affiliate-outreach-api
+
+      - name: Run database migrations
+        run: |
+          aws ecs run-task --cluster affiliate-outreach-prod --task-definition affiliate-outreach-migration --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
+
+      - name: Verify deployment
+        run: |
+          curl -f https://affiliate-outreach.com/health || exit 1
+
+      - name: Multi-platform deployment notifications
+        if: always()
+        run: |
+          # Set deployment status variables
+          if [[ "${{ job.status }}" == "success" ]]; then
+            STATUS_EMOJI="🚀"
+            STATUS_TEXT="successful"
+            STATUS_COLOR="3066993"
+            DISCORD_COLOR="3066993"
+          else
+            STATUS_EMOJI="❌"
+            STATUS_TEXT="failed"
+            STATUS_COLOR="15158332"
+            DISCORD_COLOR="15158332"
+          fi
+          
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Discord notification with rich embed
+          if [[ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]]; then
+            curl -H "Content-Type: application/json" \
+                 -d "{
+                   \"embeds\": [{
+                     \"title\": \"${STATUS_EMOJI} Production Deployment\",
+                     \"description\": \"Deployment ${STATUS_TEXT}\",
+                     \"color\": ${DISCORD_COLOR},
+                     \"fields\": [
+                       {\"name\": \"Environment\", \"value\": \"Production\", \"inline\": true},
+                       {\"name\": \"Version\", \"value\": \"${{ github.sha }}\", \"inline\": true},
+                       {\"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true},
+                       {\"name\": \"Actor\", \"value\": \"${{ github.actor }}\", \"inline\": true}
+                     ],
+                     \"timestamp\": \"${TIMESTAMP}\",
+                     \"footer\": {\"text\": \"Affiliate Outreach System\"}
+                   }]
+                 }" \
+                 "${{ secrets.DISCORD_WEBHOOK_URL }}"
+          fi
+          
+          # Telegram notification with inline keyboard
+          if [[ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" && -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]]; then
+            curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+                 -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -d "text=${STATUS_EMOJI} *Production Deployment ${STATUS_TEXT}*%0A%0A📦 Version: \`${{ github.sha }}\`%0A🌿 Branch: ${{ github.ref_name }}%0A👤 Actor: ${{ github.actor }}%0A⏰ Time: ${TIMESTAMP}" \
+                 -d "parse_mode=Markdown" \
+                 -d 'reply_markup={"inline_keyboard":[[{"text":"View Logs","url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]]}'
+          fi
+          
+          # Twitter/X announcement for successful deployments
+          if [[ "${{ job.status }}" == "success" && -n "${{ secrets.TWITTER_BEARER_TOKEN }}" ]]; then
+            curl -X POST "https://api.twitter.com/2/tweets" \
+                 -H "Authorization: Bearer ${{ secrets.TWITTER_BEARER_TOKEN }}" \
+                 -H "Content-Type: application/json" \
+                 -d '{"text": "🚀 Just deployed a new version of our affiliate outreach system! Enhanced automation and improved performance now live. #DevOps #Automation #AffiliateMarketing #AI"}'
+          fi
+          
+          # LinkedIn company update for successful deployments
+          if [[ "${{ job.status }}" == "success" && -n "${{ secrets.LINKEDIN_ACCESS_TOKEN }}" ]]; then
+            curl -X POST "https://api.linkedin.com/v2/shares" \
+                 -H "Authorization: Bearer ${{ secrets.LINKEDIN_ACCESS_TOKEN }}" \
+                 -H "Content-Type: application/json" \
+                 -d '{
+                   "content": {
+                     "contentEntities": [],
+                     "title": "System Update Deployed"
+                   },
+                   "distribution": {
+                     "linkedInDistributionTarget": {}
+                   },
+                   "text": {
+                     "text": "🚀 Successfully deployed new features to our affiliate outreach platform. Improved automation, enhanced AI capabilities, and better user experience now live!"
+                   }
+                 }'
+          fi
+          
+          # WhatsApp notification for critical team members
+          if [[ -n "${{ secrets.WHATSAPP_ACCESS_TOKEN }}" && -n "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" && -n "${{ secrets.TEAM_WHATSAPP_NUMBER }}" ]]; then
+            curl -X POST "https://graph.facebook.com/v18.0/${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}/messages" \
+                 -H "Authorization: Bearer ${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
+                 -H "Content-Type: application/json" \
+                 -d "{
+                   \"messaging_product\": \"whatsapp\",
+                   \"to\": \"${{ secrets.TEAM_WHATSAPP_NUMBER }}\",
+                   \"type\": \"text\",
+                   \"text\": {
+                     \"body\": \"${STATUS_EMOJI} Production deployment ${STATUS_TEXT}!\\n\\nVersion: ${{ github.sha }}\\nBranch: ${{ github.ref_name }}\\nTime: ${TIMESTAMP}\"
+                   }
+                 }"
+          fi
+          
+          # Slack notification (keeping original for compatibility)
+          if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+                 --data "{
+                   \"text\": \"${STATUS_EMOJI} Production deployment ${STATUS_TEXT}!\",
+                   \"attachments\": [{
+                     \"color\": \"${STATUS_COLOR}\",
+                     \"fields\": [
+                       {\"title\": \"Environment\", \"value\": \"Production\", \"short\": true},
+                       {\"title\": \"Version\", \"value\": \"${{ github.sha }}\", \"short\": true},
+                       {\"title\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"short\": true},
+                       {\"title\": \"Actor\", \"value\": \"${{ github.actor }}\", \"short\": true}
+                     ]
+                   }]
+                 }" \
+                 "${{ secrets.SLACK_WEBHOOK_URL }}"
+          fi
